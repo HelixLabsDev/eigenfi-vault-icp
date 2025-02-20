@@ -4,6 +4,34 @@
       "candid": "src/icrc1-ledger/icrc1-ledger.did",
       "package": "icrc1-ledger",
       "type": "rust"
+    },
+    "helix_vault_backend": {
+      "type": "rust",
+      "candid": "src/helix_vault_backend/helix_vault_backend.did",
+      "package": "helix_vault_backend",
+      "dependencies": [],
+      "remote": {
+        "id": {
+          "ic": "b77ix-eeaaa-aaaaa-qaada-cai"
+        }
+      }
+    },
+    "internet_identity": {
+      "type": "custom",
+      "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
+      "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
+      "specified_id": "dxfxs-weaaa-aaaaa-qaapa-cai",
+      "remote": {
+        "id": {
+          "ic": "dxfxs-weaaa-aaaaa-qaapa-cai"
+        }
+      },
+      "frontend": {}
+    },
+    "helix_vault_frontend": {
+      "entrypoint": "src/helix_vault_frontend/out/index.html",
+      "source": ["src/helix_vault_frontend/out"],
+      "type": "assets"
     }
   },
   "defaults": {

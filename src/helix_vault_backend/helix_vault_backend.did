@@ -1,0 +1,12 @@
+type UserBalance = record {
+    balance: nat;
+};
+
+type ResultText = variant { Ok: text; Err: text };
+
+service : {
+    get_user_balance : (principal) -> (nat) query;
+    get_vault_balance : () -> (nat) query;
+    deposit_icrc1 : (nat64) -> (ResultText);
+    withdraw_icrc1 : (nat64) -> (ResultText);
+}

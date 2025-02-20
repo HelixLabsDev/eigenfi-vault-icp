@@ -6,7 +6,7 @@ dfx deploy icrc1-ledger --argument "(variant { Init = record {
   token_symbol = \"TEX\";
   token_name = \"Token example\";
   minting_account = record { owner = principal \"$PRINCIPAL\"  };
-  transfer_fee = 10_000;
+  transfer_fee = 10_000_000;
   metadata = vec {};
   initial_balances = vec {};
   archive_options = record {

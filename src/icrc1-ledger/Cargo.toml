@@ -45,7 +45,6 @@ serde_bytes = { workspace = true }
 [dev-dependencies]
 candid_parser = { workspace = true }
 cddl = "0.9.4"
-ic-icrc1-ledger-sm-tests = { git = "https://github.com/dfinity/ic.git"}
 ic-state-machine-tests = { git = "https://github.com/dfinity/ic.git"}
 ic-test-utilities-load-wasm = { git = "https://github.com/dfinity/ic.git"}
 leb128 = "0.2.4"
