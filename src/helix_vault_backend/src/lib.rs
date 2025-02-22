@@ -7,7 +7,7 @@ use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-const ICRC1_LEDGER_CANISTER_ID: &str = "dlbnd-beaaa-aaaaa-qaana-cai"; // Set your actual Ledger ID
+const ICRC1_LEDGER_CANISTER_ID: &str = "bkyz2-fmaaa-aaaaa-qaaaq-cai"; // Set your actual Ledger ID
 
 #[derive(CandidType, Deserialize, Default, Clone)]
 pub struct UserBalance {

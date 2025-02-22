@@ -75,7 +75,7 @@ export default function Home() {
       const identity = authClient.getIdentity();
       const decimals = BigInt(8);
       const amount = BigInt(10) ** decimals; // Example: 100 tokens
-      const actor = createActor("dlbnd-beaaa-aaaaa-qaana-cai", {
+      const actor = createActor("bkyz2-fmaaa-aaaaa-qaaaq-cai", {
         agentOptions: {
           identity,
         },
@@ -96,7 +96,7 @@ export default function Home() {
         expected_allowance: [], // ✅ Optional: `[]` if no expected allowance
         expires_at: [expirationTime], // ✅ Optional: `[]` if no expiration
         spender: {
-          owner: Principal.fromText("dzh22-nuaaa-aaaaa-qaaoa-cai"), // ✅ FIXED! Converted to Principal type
+          owner: Principal.fromText("be2us-64aaa-aaaaa-qaabq-cai"), // ✅ FIXED! Converted to Principal type
           subaccount: [],
         },
       });

@@ -2,7 +2,6 @@
 members = [
     "src/icrc1-ledger",
     "src/helix_vault_backend"
-
 ]
 resolver = "2"
 

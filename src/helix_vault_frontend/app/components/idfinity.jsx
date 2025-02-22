@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { AuthClient } from "@dfinity/auth-client";
 import { createActor } from "../../../declarations/helix_vault_backend";
 
-const identityProvider = "http://dxfxs-weaaa-aaaaa-qaapa-cai.localhost:4943"; // Local
+const identityProvider = "http://br5f7-7uaaa-aaaaa-qaaca-cai.localhost:4943"; // Local
 
 const InternetIdentity = ({
   setActor,
@@ -21,7 +21,7 @@ const InternetIdentity = ({
   async function updateActor() {
     const authClient = await AuthClient.create();
     const identity = authClient.getIdentity();
-    const actor = createActor("dzh22-nuaaa-aaaaa-qaaoa-cai", {
+    const actor = createActor("be2us-64aaa-aaaaa-qaabq-cai", {
       agentOptions: {
         identity,
       },
