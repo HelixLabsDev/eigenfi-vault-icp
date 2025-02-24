@@ -7,7 +7,7 @@ use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-const ICRC1_LEDGER_CANISTER_ID: &str = "bw4dl-smaaa-aaaaa-qaacq-cai";
+const ICRC1_LEDGER_CANISTER_ID: &str = "br5f7-7uaaa-aaaaa-qaaca-cai";
 
 #[derive(CandidType, Deserialize, Default, Clone)]
 struct UserBalance {

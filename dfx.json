@@ -15,10 +15,10 @@
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
       "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
-      "specified_id": "ajuq4-ruaaa-aaaaa-qaaga-cai",
+      "specified_id": "a4tbr-q4aaa-aaaaa-qaafq-cai",
       "remote": {
         "id": {
-          "ic": "ajuq4-ruaaa-aaaaa-qaaga-cai"
+          "ic": "a4tbr-q4aaa-aaaaa-qaafq-cai"
         }
       },
       "frontend": {}

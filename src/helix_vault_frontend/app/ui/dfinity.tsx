@@ -1,0 +1,92 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useEffect } from "react";
+import { AuthClient } from "@dfinity/auth-client";
+import { HttpAgent } from "@dfinity/agent";
+import { createActor } from "@/declarations/helix_vault_backend";
+import { createActor as createLedgerActor } from "@/declarations/icrc1-ledger"; // Ledger actor
+import { Button } from "./button";
+import { useStore } from "@/lib/store";
+
+const IDENTITY_URL = "http://a4tbr-q4aaa-aaaaa-qaafq-cai.localhost:4943";
+
+const InternetIdentity = () => {
+  const {
+    setActor,
+    isAuthenticated,
+    setIsAuthenticated,
+    authClient,
+    setAuthClient,
+    principal,
+    setPrincipal,
+    setLedgerActor,
+  } = useStore();
+
+  useEffect(() => {
+    updateActor();
+  }, []);
+
+  async function updateActor(): Promise<void> {
+    const authClient = await AuthClient.create();
+    const isAuthenticated = await authClient.isAuthenticated();
+    setAuthClient(authClient);
+
+    if (isAuthenticated) {
+      const identity: any = authClient.getIdentity();
+      const agent = new HttpAgent({ identity, host: "http://localhost:4943" });
+      if (process.env.NEXT_PUBLIC_DFX_NETWORK !== "ic") {
+        await agent.fetchRootKey(); // Local dev
+      }
+      const actor = createActor("asrmz-lmaaa-aaaaa-qaaeq-cai", { agent });
+      setActor(actor);
+      setIsAuthenticated(true);
+      setPrincipal(identity.getPrincipal().toText().toString());
+
+      const ledgerActor = createLedgerActor("br5f7-7uaaa-aaaaa-qaaca-cai", {
+        agentOptions: { identity },
+      });
+      setLedgerActor(ledgerActor);
+    } else {
+      setIsAuthenticated(false);
+      setPrincipal(null);
+    }
+  }
+
+  async function login(): Promise<void> {
+    if (authClient) {
+      await authClient.login({
+        identityProvider: IDENTITY_URL,
+        onSuccess: updateActor,
+      });
+    }
+  }
+
+  async function logout(): Promise<void> {
+    if (authClient) {
+      await authClient.logout();
+      setActor(null);
+      setIsAuthenticated(false);
+      setPrincipal(null);
+    }
+  }
+
+  console.log("principal", principal);
+
+  return (
+    <div className="flex items-center space-x-4">
+      {isAuthenticated ? (
+        <>
+          {/* <p>{principal && principal.slice(0, 5)}</p> */}
+          <p>{principal}</p>
+          <Button onClick={logout}>Sign Out</Button>
+        </>
+      ) : (
+        <Button onClick={login}>Sign In</Button>
+      )}
+    </div>
+  );
+};
+
+export default InternetIdentity;
