@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect } from "react";
 import { AuthClient } from "@dfinity/auth-client";
-import { createActor } from "../../../declarations/helix_vault_backend";
+import { HttpAgent } from "@dfinity/agent"; // Add this
+import { createActor } from "../../declarations/helix_vault_backend";
 
-const identityProvider = "http://br5f7-7uaaa-aaaaa-qaaca-cai.localhost:4943"; // Local
+const IDENTITY_URL = "http://ajuq4-ruaaa-aaaaa-qaaga-cai.localhost:4943"; // Updated local II canister ID
 
 const InternetIdentity = ({
   setActor,
@@ -20,32 +21,37 @@ const InternetIdentity = ({
 
   async function updateActor() {
     const authClient = await AuthClient.create();
-    const identity = authClient.getIdentity();
-    const actor = createActor("be2us-64aaa-aaaaa-qaabq-cai", {
-      agentOptions: {
-        identity,
-      },
-    });
     const isAuthenticated = await authClient.isAuthenticated();
-
-    setActor(actor);
     setAuthClient(authClient);
-    setIsAuthenticated(isAuthenticated);
-    setPrincipal(identity.getPrincipal().toString());
-  }
 
-  console.log("principal ->", principal);
+    if (isAuthenticated) {
+      const identity = authClient.getIdentity();
+      const agent = new HttpAgent({ identity, host: "http://localhost:4943" });
+      if (process.env.NEXT_PUBLIC_DFX_NETWORK !== "ic") {
+        await agent.fetchRootKey(); // Local dev
+      }
+      const actor = createActor("a3shf-5eaaa-aaaaa-qaafa-cai", { agent });
+      setActor(actor);
+      setIsAuthenticated(true);
+      setPrincipal(identity.getPrincipal().toText());
+    } else {
+      setIsAuthenticated(false);
+      setPrincipal(null);
+    }
+  }
 
   async function login() {
     await authClient.login({
-      identityProvider,
+      identityProvider: IDENTITY_URL,
       onSuccess: updateActor,
     });
   }
 
   async function logout() {
     await authClient.logout();
-    updateActor();
+    setActor(null);
+    setIsAuthenticated(false);
+    setPrincipal(null);
   }
 
   return (

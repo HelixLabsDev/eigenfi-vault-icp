@@ -1,102 +1,93 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// import { createActor } from "../../declarations/helix_vault_backend";
-import { createActor } from "../../declarations/icrc1-ledger";
+import { createActor as createVaultActor } from "../declarations/helix_vault_backend"; // Vault actor
+import { createActor as createLedgerActor } from "../declarations/icrc1-ledger"; // Ledger actor
 import Header from "./components/header";
-import { Principal } from "@dfinity/principal"; // ✅ Import Principal
+import { Principal } from "@dfinity/principal";
 
 export default function Home() {
-  const [balance, setBalance] = useState();
-  const [userBalance, setUserBalance] = useState();
-
-  const [principal, setPrincipal] = useState();
-
-  const [authClient, setAuthClient] = useState();
-  const sayGreeting = async () => {
-    const balance = await actor.get_vault_balance();
-    // const user =
-    //   (await principal.length) > 0 && (await actor.get_user_balance(principal));
-    // console.log("user", user);
-    // setUserBalance(user);
-    setBalance(balance);
-  };
-
+  const [balance, setBalance] = useState(null); // Vault balance
+  const [userBalance, setUserBalance] = useState(null);
+  const [principal, setPrincipal] = useState(null);
+  const [authClient, setAuthClient] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [totalSupply, setTotalSupply] = useState("");
-  const [actor, setActor] = useState();
-  const [tokenCreated, setTokenCreated] = useState(false);
+  const [vaultActor, setVaultActor] = useState(null); // Renamed for clarity
+  const [ledgerActor, setLedgerActor] = useState(null); // For ledger operations
   const [decimals, setDecimals] = useState(0n);
 
+  // Fetch vault balances
+  const sayGreeting = async () => {
+    if (vaultActor && principal) {
+      const balance = await vaultActor.get_vault_balance();
+      const user = await vaultActor.get_user_balance(
+        Principal.fromText(principal)
+      );
+      setBalance(balance.toString());
+      setUserBalance(user.toString());
+    }
+  };
+
+  // Fetch ledger total supply
   const updateSupply = async () => {
-    try {
-      const supply = await actor.icrc1_total_supply();
-      const decimals = BigInt(await actor.icrc1_decimals());
-      setTotalSupply(`${Number(supply) / Number(10n ** decimals)}`);
-      setDecimals(decimals);
-    } catch (error) {
-      console.error("Error fetching total supply:", error);
-    }
-  };
-
-  const checkTokenCreated = async () => {
-    try {
-      const result = await actor.token_created();
-      setTokenCreated(result);
-    } catch (error) {
-      console.error("Error fetching token created status:", error);
+    if (ledgerActor) {
+      try {
+        const supply = await ledgerActor.icrc1_total_supply();
+        const decimals = BigInt(await ledgerActor.icrc1_decimals());
+        setTotalSupply(`${Number(supply) / Number(10n ** decimals)}`);
+        setDecimals(decimals);
+      } catch (error) {
+        console.error("Error fetching total supply:", error);
+      }
     }
   };
 
   useEffect(() => {
-    if (isAuthenticated || tokenCreated) {
+    if (isAuthenticated) {
       updateSupply();
-    }
-  }, [isAuthenticated, tokenCreated]);
-
-  useEffect(() => {
-    if (actor) {
-      checkTokenCreated();
       sayGreeting();
     }
-  }, [actor]);
+  }, [isAuthenticated, vaultActor, ledgerActor, principal]);
 
   const deposit = async () => {
-    const res = await actor.deposit_icrc1(100);
-    console.log("res", res);
+    if (vaultActor) {
+      const res = await vaultActor.deposit_icrc1(BigInt(20000));
+      console.log("Deposit result:", res);
+      sayGreeting(); // Refresh balances
+    }
   };
+
   const withdraw = async () => {
-    const res = await actor.withdraw_icrc1(100);
-    console.log("res", res);
+    if (vaultActor) {
+      const res = await vaultActor.withdraw_icrc1(BigInt(100));
+      console.log("Withdraw result:", res);
+      sayGreeting(); // Refresh balances
+    }
   };
 
   const approve = async () => {
+    if (!authClient) return;
     try {
       const identity = authClient.getIdentity();
       const decimals = BigInt(8);
-      const amount = BigInt(10) ** decimals; // Example: 100 tokens
-      const actor = createActor("bkyz2-fmaaa-aaaaa-qaaaq-cai", {
-        agentOptions: {
-          identity,
-        },
+      const amount = BigInt(10) ** decimals; // 1 token
+      const feeAmount = BigInt(10000); // Ledger fee (0.0001 tokens)
+
+      const ledgerActor = createLedgerActor("bw4dl-smaaa-aaaaa-qaacq-cai", {
+        agentOptions: { identity },
       });
 
-      // ✅ Set the correct fee (10_000_000n)
-      const feeAmount = BigInt(10_000_000); // Correct fee
-      const memoBytes = new Uint8Array([1, 2, 3, 4]); // Example memo (optional)
-      const createdAtTime = BigInt(Date.now()) * BigInt(1_000_000); // Convert ms to ns
-      const expirationTime = createdAtTime + BigInt(3600 * 1_000_000_000); // Expires in 1 hour
-
-      const res = await actor.icrc2_approve({
-        fee: [feeAmount], // ✅ Fixed: Now we include the expected fee!
-        from_subaccount: [], // ✅ Optional: `[]` if not using subaccounts
-        memo: [memoBytes], // ✅ Optional: `[]` if no memo
-        created_at_time: [createdAtTime], // ✅ Optional: `[]` if not setting time
-        amount: amount, // Required
-        expected_allowance: [], // ✅ Optional: `[]` if no expected allowance
-        expires_at: [expirationTime], // ✅ Optional: `[]` if no expiration
+      const res = await ledgerActor.icrc2_approve({
+        fee: [feeAmount],
+        from_subaccount: [],
+        memo: [],
+        created_at_time: [],
+        amount: amount,
+        expected_allowance: [],
+        expires_at: [],
         spender: {
-          owner: Principal.fromText("be2us-64aaa-aaaaa-qaabq-cai"), // ✅ FIXED! Converted to Principal type
+          owner: Principal.fromText("a3shf-5eaaa-aaaaa-qaafa-cai"),
           subaccount: [],
         },
       });
@@ -109,16 +100,15 @@ export default function Home() {
 
   return (
     <div>
-      <h1>Vault balance: {balance}</h1>
-      <h1>Vault balance: {userBalance}</h1>
+      <h1>Vault Balance: {balance || "N/A"}</h1>
+      <h1>User Balance: {userBalance || "N/A"}</h1>
+      <h1>Ledger Total Supply: {totalSupply || "N/A"}</h1>
 
       <Header
-        actor={actor}
-        setActor={setActor}
+        actor={vaultActor}
+        setActor={setVaultActor}
         isAuthenticated={isAuthenticated}
         setIsAuthenticated={setIsAuthenticated}
-        tokenCreated={tokenCreated}
-        setTokenCreated={setTokenCreated}
         setAuthClient={setAuthClient}
         authClient={authClient}
         principal={principal}
@@ -126,16 +116,16 @@ export default function Home() {
       />
 
       <button style={{ padding: "4px", borderRadius: "4px" }} onClick={deposit}>
-        deposit
+        Deposit
       </button>
       <button
         style={{ padding: "4px", borderRadius: "4px" }}
         onClick={withdraw}
       >
-        withdraw
+        Withdraw
       </button>
       <button style={{ padding: "4px", borderRadius: "4px" }} onClick={approve}>
-        Approve
+        Approve Vault
       </button>
     </div>
   );
