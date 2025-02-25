@@ -1,15 +1,19 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import animation from "@/app/ui/assets/stars.json";
+
 import StakeDemo from "@/app/ui/stake";
 import { Component as Chart1 } from "@/app/ui/chart-1";
 import { Component2 as Chart2 } from "@/app/ui/chart-2";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/ui/tabs";
-import animation from "@/app/ui/assets/stars.json";
-import dynamic from "next/dynamic";
+import { Skeleton } from "@/app/ui/skeleton";
 import { useStore } from "@/lib/store";
-import { Principal } from "@dfinity/principal";
-import { useEffect } from "react";
+import { vaultActorAddress } from "@/lib/constant";
 import { convertBalance, convertNatToNumber } from "@/lib/utils";
+import { Principal } from "@dfinity/principal";
+import { createActor } from "@/declarations/helix_vault_backend";
 
 const LottiePlayer = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -24,16 +28,18 @@ export default function Home() {
     authClient,
     setWithdrawBalance,
     ledgerActor,
+    isAuthenticated,
   } = useStore();
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const sayGreeting = async () => {
       if (actor && principal && ledgerActor && authClient) {
-        const balance = await actor.get_vault_balance();
         const user = await actor.get_user_balance(
           Principal.fromText(principal)
         );
-        setBalance(convertNatToNumber(balance.toString()));
+
         setUserBalance(convertNatToNumber(user.toString()));
 
         const res = await ledgerActor.icrc1_balance_of({
@@ -50,18 +56,36 @@ export default function Home() {
     authClient,
     ledgerActor,
     principal,
-    setBalance,
     setUserBalance,
     setWithdrawBalance,
   ]);
 
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      const actor = createActor(vaultActorAddress);
+      const balance = await actor.get_vault_balance();
+      setBalance(convertNatToNumber(balance.toString()));
+      setInterval(() => {
+        setLoading(false);
+      }, 1000);
+    };
+
+    fetch();
+  }, [setBalance]);
+
   const stats = [
+    { label: "Total Deposits", value: balance ? balance.toString() : "empty" },
+    { label: "Liquidity", value: "12.74k" },
+    { label: "APY", value: "4.18%" },
+  ];
+
+  const statsWithBalance = [
     { label: "Total Deposits", value: balance ? balance.toString() : "empty" },
     {
       label: "User Balance",
-      value: userBalance ? balance.toString() : "empty",
+      value: userBalance ? userBalance.toString() : "empty",
     },
-    // { label: "Liquidity", value: "12.74k" },
     { label: "APY", value: "4.18%" },
   ];
 
@@ -83,7 +107,10 @@ export default function Home() {
           Vault, users can easily transfer their ICP tokens to other users,
           enabling seamless and secure transactions.
         </p>
-        <Statistics stats={stats} />
+        <Statistics
+          loading={loading}
+          stats={isAuthenticated ? statsWithBalance : stats}
+        />
         <VaultTabs />
       </div>
       <div className="w-[740px] mt-12 sticky top-5">
@@ -93,18 +120,33 @@ export default function Home() {
   );
 }
 
-function Statistics({ stats }: { stats: { label: string; value: string }[] }) {
+function Statistics({
+  stats,
+  loading,
+}: {
+  stats: { label: string; value: string }[];
+  loading: boolean;
+}) {
   return (
     <div className="flex gap-6 justify-between">
-      {stats.map((stat) => (
-        <div
-          key={stat.label}
-          className="flex flex-col gap-2 mt-6 text-xl text-foreground/80 font-light"
-        >
-          <p>{stat.label}</p>
-          <p className="text-3xl text-foreground">{stat.value}</p>
-        </div>
-      ))}
+      {loading
+        ? [...Array(3)].map((_, index) => (
+            <div
+              key={index}
+              className="flex gap-2 mt-6 text-xl text-foreground/80 font-light"
+            >
+              <Skeleton className="h-[72px] w-[128px] bg-primary/5" />
+            </div>
+          ))
+        : stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-col gap-2 mt-6 text-xl text-foreground/80 font-light"
+            >
+              <p>{stat.label}</p>
+              <p className="text-3xl text-foreground">{stat.value}</p>
+            </div>
+          ))}
     </div>
   );
 }

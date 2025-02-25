@@ -9,8 +9,11 @@ import { createActor } from "@/declarations/helix_vault_backend";
 import { createActor as createLedgerActor } from "@/declarations/icrc1-ledger"; // Ledger actor
 import { Button } from "./button";
 import { useStore } from "@/lib/store";
-
-const IDENTITY_URL = "http://a4tbr-q4aaa-aaaaa-qaafq-cai.localhost:4943";
+import {
+  IDENTITY_URL,
+  ledgerActorAddress,
+  vaultActorAddress,
+} from "@/lib/constant";
 
 const InternetIdentity = () => {
   const {
@@ -39,12 +42,12 @@ const InternetIdentity = () => {
       if (process.env.NEXT_PUBLIC_DFX_NETWORK !== "ic") {
         await agent.fetchRootKey(); // Local dev
       }
-      const actor = createActor("asrmz-lmaaa-aaaaa-qaaeq-cai", { agent });
+      const actor = createActor(vaultActorAddress, { agent });
       setActor(actor);
       setIsAuthenticated(true);
       setPrincipal(identity.getPrincipal().toText().toString());
 
-      const ledgerActor = createLedgerActor("br5f7-7uaaa-aaaaa-qaaca-cai", {
+      const ledgerActor = createLedgerActor(ledgerActorAddress, {
         agentOptions: { identity },
       });
       setLedgerActor(ledgerActor);
@@ -72,18 +75,17 @@ const InternetIdentity = () => {
     }
   }
 
-  console.log("principal", principal);
-
   return (
-    <div className="flex items-center space-x-4">
+    <div className="flex w-full items-center space-x-4">
       {isAuthenticated ? (
         <>
-          {/* <p>{principal && principal.slice(0, 5)}</p> */}
-          <p>{principal}</p>
+          <p>{principal && principal.slice(0, 5)}</p>
           <Button onClick={logout}>Sign Out</Button>
         </>
       ) : (
-        <Button onClick={login}>Sign In</Button>
+        <Button className="w-full" onClick={login}>
+          Sign In
+        </Button>
       )}
     </div>
   );

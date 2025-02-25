@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -15,6 +14,8 @@ import {
   convertToNat,
   tokensToUnits,
 } from "@/lib/utils";
+import InternetIdentity from "./dfinity";
+import { vaultPrincipal } from "@/lib/constant";
 
 export default function StakeDemo() {
   const {
@@ -27,6 +28,7 @@ export default function StakeDemo() {
     setWithdrawBalance,
     withdrawBalance,
     ledgerActor,
+    isAuthenticated,
   } = useStore();
 
   const [isDeposit, setIsDeposit] = useState<boolean>(true);
@@ -83,23 +85,31 @@ export default function StakeDemo() {
       return;
     }
 
+    const toastId = toast.loading(
+      `${type.charAt(0).toUpperCase() + type.slice(1)} in progress...`
+    );
+
     try {
-      const vaultPrincipal = Principal.fromText("asrmz-lmaaa-aaaaa-qaaeq-cai");
       const userPrincipal = Principal.fromText(principal);
       const amountNat = convertToNat(amount);
-      let res;
 
       if (type === "deposit") {
-        toast.loading("Checking allowance...");
+        // Check Allowance
         const allowanceResult = await ledgerActor.icrc2_allowance({
           account: { owner: userPrincipal, subaccount: [] },
-          spender: { owner: vaultPrincipal, subaccount: [] },
+          spender: {
+            owner: Principal.fromText(vaultPrincipal),
+            subaccount: [],
+          },
         });
+
         const currentAllowance = BigInt(allowanceResult.allowance.toString());
 
         if (currentAllowance < units) {
           const feeAmount = BigInt(10000);
           const approveAmount = units + feeAmount;
+
+          toast.loading("Approving transaction...", { id: toastId });
 
           const approveRes = await ledgerActor.icrc2_approve({
             fee: [feeAmount],
@@ -109,35 +119,60 @@ export default function StakeDemo() {
             amount: approveAmount,
             expected_allowance: [],
             expires_at: [],
-            spender: { owner: vaultPrincipal, subaccount: [] },
+            spender: {
+              owner: Principal.fromText(vaultPrincipal),
+              subaccount: [],
+            },
           });
 
-          console.log("Approve response:", approveRes);
           if ("Err" in approveRes) {
-            toast.error(`Approval failed: ${JSON.stringify(approveRes.Err)}`);
+            toast.error(`Approval failed: ${JSON.stringify(approveRes.Err)}`, {
+              id: toastId,
+            });
             return;
           }
-          toast.success("Approval successful, depositing...");
-        } else {
-          res = await actor.deposit_icrc1(amountNat);
-          console.log(`${type} result:`, res);
-          toast.success(
-            `${type.charAt(0).toUpperCase() + type.slice(1)} Successful`
-          );
         }
-      } else {
-        res = await actor.withdraw_icrc1(amountNat);
 
-        console.log(`${type} result:`, res);
-        toast.success(
-          `${type.charAt(0).toUpperCase() + type.slice(1)} Successful`
-        );
+        // Perform Deposit
+        toast.loading("Depositing...", { id: toastId });
+
+        const res = await actor.deposit_icrc1(amountNat);
+        console.log("Deposit Response:", res);
+
+        if (!res || "Err" in res) {
+          toast.error(`Deposit failed: ${JSON.stringify(res.Err || res)}`, {
+            id: toastId,
+          });
+          return;
+        }
+
+        toast.success("Deposit Successful!", { id: toastId });
+      } else {
+        // Perform Withdrawal
+        toast.loading("Withdrawing...", { id: toastId });
+
+        const res = await actor.withdraw_icrc1(amountNat);
+        console.log("Withdraw Response:", res);
+
+        if (!res || "Err" in res) {
+          toast.error(`Withdrawal failed: ${JSON.stringify(res.Err || res)}`, {
+            id: toastId,
+          });
+          return;
+        }
+
+        toast.success("Withdrawal Successful!", { id: toastId });
       }
 
-      fetchBalances();
+      await fetchBalances();
     } catch (error: any) {
       console.error(`${type} failed:`, error);
-      toast.error(`${type} failed: ${error.message || JSON.stringify(error)}`);
+      toast.error(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} failed: ${
+          error.message || JSON.stringify(error)
+        }`,
+        { id: toastId }
+      );
     }
   };
 
@@ -191,23 +226,23 @@ export default function StakeDemo() {
         </TabsContent>
       </Tabs>
 
-      <div className="shadow bg-white dark:bg-white/5 h-[340px] rounded-2xl p-4 duration-200 ease-in-out hover:bg-primary/5">
+      <div className="shadow hover:bg-primary/5 dark:bg-foreground/5 bg-white h-[340px] rounded-2xl p-4 duration-200 ease-in-out">
         about
       </div>
 
       <div className="flex flex-col gap-2">
-        <Button
-          onClick={() => handleTransaction("deposit")}
-          disabled={!isDeposit || !amount}
-        >
-          Deposit
-        </Button>
-        <Button
-          onClick={() => handleTransaction("withdraw")}
-          disabled={isDeposit || !amount}
-        >
-          Withdraw
-        </Button>
+        {isAuthenticated ? (
+          <Button
+            onClick={() =>
+              handleTransaction(isDeposit ? "deposit" : "withdraw")
+            }
+            disabled={!amount}
+          >
+            {isDeposit ? "Deposit" : "Withdraw"}
+          </Button>
+        ) : (
+          <InternetIdentity />
+        )}
       </div>
     </div>
   );
@@ -221,8 +256,25 @@ interface AmountInputProps {
 }
 
 function AmountInput({ amount, onChange, balance }: AmountInputProps) {
+  const handleChange = (value: string) => {
+    const sanitizedValue = value.replace(/[^0-9.]/g, "");
+    const parts = sanitizedValue.split(".");
+    const wholePart = parts[0];
+    const fractionalPart = parts[1] ? parts[1].slice(0, 8) : "";
+    let newValue = wholePart + (fractionalPart ? "." + fractionalPart : "");
+
+    if (balance !== undefined) {
+      const numericValue = parseFloat(newValue);
+      if (!isNaN(numericValue) && numericValue > balance) {
+        newValue = balance.toString();
+      }
+    }
+
+    onChange(newValue);
+  };
+
   return (
-    <div className="relative hover:bg-primary/5 ease-in-out duration-300 rounded-2xl">
+    <div className="relative ease-in-out duration-300 rounded-2xl">
       <div className="absolute top-3 left-4 text-sm text-foreground/80">
         Amount
       </div>
@@ -231,11 +283,11 @@ function AmountInput({ amount, onChange, balance }: AmountInputProps) {
         placeholder="0"
         type="text"
         value={amount}
-        onChange={(e) => onChange(e.target.value)}
-        className="dark:bg-foreground/5 bg-white border-0 rounded-2xl focus-visible:ring-offset-0 focus-visible:ring-[0.2px] h-[120px] py-[40px] px-4"
+        onChange={(e) => handleChange(e.target.value)}
+        className="hover:bg-primary/5 dark:bg-foreground/5 bg-white  border-0 rounded-2xl focus-visible:ring-offset-0 focus-visible:ring-[0.2px] h-[120px] py-[40px] px-4"
       />
       <div className="absolute top-3 right-5">
-        <div className="flex items-center border rounded-full p-1 w-7 h-7 bg-primary/20">
+        <picture className="flex items-center border rounded-full p-1 w-7 h-7 bg-primary/20">
           <img
             src="/ICP.png"
             alt="icp"
@@ -243,14 +295,18 @@ function AmountInput({ amount, onChange, balance }: AmountInputProps) {
             height={11.5}
             className="h-auto w-6"
           />
-        </div>
+        </picture>
       </div>
       <div className="absolute flex gap-1 bottom-4 left-4 text-xs text-muted-foreground/50">
-        <div>${1000}</div>
+        <div>${Number(amount) * 6.5}</div>
       </div>
       <div className="absolute bottom-3 right-4 text-xs text-primary flex gap-0.5">
         <span className="py-1 text-foreground/80">{balance} ICP</span>
-        <Button variant="ghost" size="xs">
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() => balance && onChange(balance.toString())}
+        >
           MAX
         </Button>
       </div>

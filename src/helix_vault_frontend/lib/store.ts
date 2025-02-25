@@ -12,8 +12,10 @@ interface AppState {
 
   isAuthenticated: boolean;
   setIsAuthenticated: (isAuthenticated: boolean) => void;
+
   authClient: AuthClient | null;
   setAuthClient: (authClient: AuthClient | null) => void;
+
   principal: string | null;
   setPrincipal: (principal: string | null) => void;
 
@@ -35,8 +37,10 @@ export const useStore = create<AppState>((set) => ({
 
   isAuthenticated: false,
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+
   authClient: null,
   setAuthClient: (authClient) => set({ authClient }),
+
   principal: null,
   setPrincipal: (principal) => set({ principal }),
 
