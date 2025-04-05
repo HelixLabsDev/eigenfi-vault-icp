@@ -15,12 +15,6 @@
       "type": "custom",
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
       "wasm": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity_dev.wasm.gz",
-      "specified_id": "a4tbr-q4aaa-aaaaa-qaafq-cai",
-      "remote": {
-        "id": {
-          "ic": "a4tbr-q4aaa-aaaaa-qaafq-cai"
-        }
-      },
       "frontend": {}
     },
     "helix_vault_frontend": {

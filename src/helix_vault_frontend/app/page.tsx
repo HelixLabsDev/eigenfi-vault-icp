@@ -14,6 +14,7 @@ import { vaultActorAddress } from "@/lib/constant";
 import { convertBalance, convertNatToNumber } from "@/lib/utils";
 import { Principal } from "@dfinity/principal";
 import { createActor } from "@/declarations/helix_vault_backend";
+import { _userDetail } from "@/lib/axios/_user_detail";
 
 const LottiePlayer = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -32,6 +33,8 @@ export default function Home() {
   } = useStore();
 
   const [loading, setLoading] = useState(true);
+
+  const [points, setPoints] = useState(0);
 
   useEffect(() => {
     const sayGreeting = async () => {
@@ -74,6 +77,16 @@ export default function Home() {
     fetch();
   }, [setBalance]);
 
+  useEffect(() => {
+    const fetch = async () => {
+      const userData = await _userDetail({ address: principal ?? "" });
+      setPoints(userData?.data?.points);
+      console.log("userData", userData);
+    };
+
+    fetch();
+  }, [principal]);
+
   const stats = [
     { label: "Total Deposits", value: balance ? balance.toString() : "empty" },
     { label: "Liquidity", value: "12.74k" },
@@ -111,7 +124,7 @@ export default function Home() {
           loading={loading}
           stats={isAuthenticated ? statsWithBalance : stats}
         />
-        <VaultTabs />
+        <VaultTabs points={points} />
       </div>
       <div className="w-[740px] mt-12 sticky top-5">
         <StakeDemo />
@@ -151,7 +164,7 @@ function Statistics({
   );
 }
 
-function VaultTabs() {
+function VaultTabs({ points }: { points: number }) {
   return (
     <div className="flex flex-col">
       <Tabs defaultValue="tab-1" className="items-center relative">
@@ -174,6 +187,10 @@ function VaultTabs() {
           <Chart1 />
         </TabsContent>
         <TabsContent value="tab-2" className="py-4">
+          <div className="flex gap-3 my-6 text-xl">
+            <p>Points: </p>
+            <p>{points}</p>
+          </div>
           <Chart2 />
         </TabsContent>
       </Tabs>

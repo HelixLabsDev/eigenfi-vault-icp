@@ -16,6 +16,7 @@ import {
 } from "@/lib/utils";
 import InternetIdentity from "./dfinity";
 import { vaultPrincipal } from "@/lib/constant";
+import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
 
 export default function StakeDemo() {
   const {
@@ -146,6 +147,14 @@ export default function StakeDemo() {
           return;
         }
 
+        const { status, message } = await _depositEthereum({
+          address: userPrincipal.toText(),
+          amount: Number(amount || 0),
+        });
+
+        console.log("status", status);
+        console.log("message", message);
+
         toast.success("Deposit Successful!", { id: toastId });
       } else {
         // Perform Withdrawal
@@ -160,6 +169,14 @@ export default function StakeDemo() {
           });
           return;
         }
+
+        const { status, message } = await _withdrawEthereum({
+          address: userPrincipal.toText(),
+          amount: Number(amount || 0),
+        });
+
+        console.log("status", status);
+        console.log("message", message);
 
         toast.success("Withdrawal Successful!", { id: toastId });
       }
