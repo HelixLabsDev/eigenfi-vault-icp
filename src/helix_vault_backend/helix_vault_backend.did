@@ -8,7 +8,7 @@ service : {
     get_user_balance : (principal) -> (nat) query;
     get_vault_balance : () -> (nat) query;
     get_transfer_fee : () -> (nat) query;
-    deposit_icrc1 : (nat) -> (ResultText);
+    deposit_icrc1: (nat, text) -> (variant { Ok: text; Err: text });
     withdraw_icrc1 : (nat) -> (ResultText);
     sync_state : () -> (ResultText);
 }

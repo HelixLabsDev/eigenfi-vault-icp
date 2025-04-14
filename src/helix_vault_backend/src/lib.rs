@@ -7,7 +7,7 @@ use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-const ICRC1_LEDGER_CANISTER_ID: &str = "gl6nx-5maaa-aaaaa-qaaqq-cai";
+const ICRC1_LEDGER_CANISTER_ID: &str = "ahw5u-keaaa-aaaaa-qaaha-cai";
 
 #[derive(CandidType, Deserialize, Default, Clone)]
 struct UserBalance {
@@ -38,7 +38,7 @@ fn get_transfer_fee() -> Nat {
 }
 
 #[ic_cdk::update]
-async fn deposit_icrc1(amount: Nat) -> Result<String, String> {
+async fn deposit_icrc1(amount: Nat, eth_address: String) -> Result<String, String> {
     if amount == Nat::from(0u64) {
         return Err("Deposit amount must be greater than zero".to_string());
     }
@@ -46,15 +46,14 @@ async fn deposit_icrc1(amount: Nat) -> Result<String, String> {
     let caller = ic_cdk::api::caller();
     let token_canister: Principal = ICRC1_LEDGER_CANISTER_ID.parse().unwrap();
 
-    // Fetch or update the fee lazily
     let fee = TRANSFER_FEE.with(|f| f.borrow().clone());
-    let fee = if fee == Nat::from(10_000_u64) { // Still default
+    let fee = if fee == Nat::from(10_000_u64) {
         match call::<(), (Nat,)>(token_canister, "icrc1_fee", ()).await {
             Ok((new_fee,)) => {
                 TRANSFER_FEE.with(|f| *f.borrow_mut() = new_fee.clone());
                 new_fee
             }
-            Err(_) => fee, // Use default if fetch fails
+            Err(_) => fee,
         }
     } else {
         fee
@@ -78,23 +77,33 @@ async fn deposit_icrc1(amount: Nat) -> Result<String, String> {
         token_canister,
         "icrc2_transfer_from",
         (transfer_arg,),
-    )
-    .await
-    {
+    ).await {
         Ok((Ok(_block_index),)) => {
-            let effective_amount = amount;
             USER_BALANCES.with(|balances| {
                 let mut user_balances = balances.borrow_mut();
                 let user_balance = user_balances
                     .entry(caller)
                     .or_insert(UserBalance { balance: Nat::from(0u64) });
-                user_balance.balance += effective_amount.clone();
+                user_balance.balance += amount.clone();
             });
             TOTAL_DEPOSITED.with(|total| {
                 let mut total_deposited = total.borrow_mut();
-                *total_deposited += effective_amount;
+                *total_deposited += amount.clone();
             });
-            Ok("Deposit successful".to_string())
+
+            let test_evm_rpc_canister: Principal = "b77ix-eeaaa-aaaaa-qaada-cai".parse().unwrap();
+            let contract = "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F".to_string();
+            let scaled_amount = (amount.0.clone() * 10u128.pow(10)).to_string();
+            let result: (Result<String, String>,) = call(
+                test_evm_rpc_canister,
+                "mint",
+                (contract, eth_address, scaled_amount),
+            ).await.map_err(|e| format!("Call failed: {:?}", e))?;
+
+            match result.0 {
+                Ok(tx_hash) => Ok(format!("Deposit successful. Mint tx sent: {}", tx_hash)),
+                Err(e) => Err(format!("Deposit succeeded but mint failed: {}", e)),
+            }
         }
         Ok((Err(e),)) => Err(format!("Transfer failed: {:?}", e)),
         Err(e) => Err(format!("Call failed: {:?}", e)),
@@ -212,3 +221,4 @@ async fn sync_state() -> Result<(), String> {
     TRANSFER_FEE.with(|f| *f.borrow_mut() = fee);
     Ok(())
 }
+
