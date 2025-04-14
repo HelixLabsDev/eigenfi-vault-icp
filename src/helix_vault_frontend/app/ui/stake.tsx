@@ -35,6 +35,8 @@ export default function StakeDemo() {
   const [isDeposit, setIsDeposit] = useState<boolean>(true);
   const [amount, setAmount] = useState<string>("");
 
+  const [ethAddress, setEthAddress] = useState<string>("");
+
   const fetchBalances = useCallback(async () => {
     if (!actor || !principal || !ledgerActor) {
       console.error("Missing required dependencies for fetching balances");
@@ -245,7 +247,12 @@ export default function StakeDemo() {
       </Tabs>
 
       <div className="shadow hover:bg-primary/5 dark:bg-foreground/5 bg-white h-[340px] rounded-2xl p-4 duration-200 ease-in-out">
-        about
+        <Input
+          onChange={(e) => setEthAddress(e.target.value)}
+          value={ethAddress}
+          placeholder="0x..."
+          className="w-full py-6"
+        />
       </div>
 
       <div className="flex flex-col gap-2">
