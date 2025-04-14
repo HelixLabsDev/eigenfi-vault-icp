@@ -138,7 +138,6 @@ export default function StakeDemo() {
 
         // Perform Deposit
         toast.loading("Depositing...", { id: toastId });
-        const ethAddress = "0xE41aBc2Fc1c1adFB319d62F5B5389012C6d03122";
 
         const res = await actor.deposit_icrc1(amountNat, ethAddress);
         console.log("Deposit Response:", res);
