@@ -164,58 +164,68 @@ export default function StakeDemo() {
         // Perform Withdrawal
         toast.loading("Withdrawing...", { id: toastId });
 
-        const { hstICPWriteContract } = await getHstICPContract();
+        try {
+          const { hstICPWriteContract } = await getHstICPContract();
 
-        const tx = await hstICPWriteContract?.burn(parse18(amount));
-        await tx.wait();
+          const tx = await hstICPWriteContract?.burn(parse18(amount));
+          await tx.wait();
 
-        const tx_hash =
-          "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
-        const expected_eth_from = "0xf9bb58B6725e7e62E5786b6f670FBfB1a52d48ad";
-        const expected_contract = "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
+          // const tx_hash =
+          //   "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
+          const expected_eth_from =
+            "0xf9bb58B6725e7e62E5786b6f670FBfB1a52d48ad";
+          const expected_contract =
+            "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
 
-        // Validation
-        if (!/^\d*\.?\d*$/.test(amount)) {
-          throw new Error("Please enter a valid amount");
-        }
+          // Validation
+          if (!/^\d*\.?\d*$/.test(amount)) {
+            throw new Error("Please enter a valid amount");
+          }
 
-        // ✅ 18-decimal string (for EVM burn)
-        const expected_amount_18dec = tokensToUnits(amount, 18)?.toString();
-        if (!expected_amount_18dec) {
-          throw new Error("Invalid EVM amount: cannot convert to base units");
-        }
+          // ✅ 18-decimal string (for EVM burn)
+          const expected_amount_18dec = tokensToUnits(amount, 18)?.toString();
+          if (!expected_amount_18dec) {
+            throw new Error("Invalid EVM amount: cannot convert to base units");
+          }
 
-        // ✅ 8-decimal BigInt (for nICP withdraw)
-        const withdraw_amount_8dec = convertToNat(amount); // BigInt
+          // ✅ 8-decimal BigInt (for nICP withdraw)
+          const withdraw_amount_8dec = convertToNat(amount); // BigInt
 
-        // Debug
-        console.log("expected_amount_18dec:", expected_amount_18dec);
-        console.log("withdraw_amount_8dec:", withdraw_amount_8dec.toString());
+          // Debug
+          console.log("expected_amount_18dec:", expected_amount_18dec);
+          console.log("withdraw_amount_8dec:", withdraw_amount_8dec.toString());
 
-        const res = await actor.unlock_icrc1(
-          tx_hash,
-          expected_eth_from,
-          expected_amount_18dec,
-          withdraw_amount_8dec,
-          expected_contract
-        );
+          const res = await actor.unlock_icrc1(
+            tx.hash,
+            expected_eth_from,
+            expected_amount_18dec,
+            withdraw_amount_8dec,
+            expected_contract
+          );
 
-        if (!res || "Err" in res) {
-          toast.error(`Withdrawal failed: ${JSON.stringify(res.Err || res)}`, {
-            id: toastId,
+          if (!res || "Err" in res) {
+            toast.error(
+              `Withdrawal failed: ${JSON.stringify(res.Err || res)}`,
+              {
+                id: toastId,
+              }
+            );
+            return;
+          }
+
+          const { status, message } = await _withdrawEthereum({
+            address: userPrincipal.toText(),
+            amount: Number(amount || 0),
           });
-          return;
+
+          console.log("status", status);
+          console.log("message", message);
+
+          toast.success("Withdrawal Successful!", { id: toastId });
+        } catch (err: any) {
+          toast.error(err, { id: toastId });
+          console.log("err", err);
         }
-
-        const { status, message } = await _withdrawEthereum({
-          address: userPrincipal.toText(),
-          amount: Number(amount || 0),
-        });
-
-        console.log("status", status);
-        console.log("message", message);
-
-        toast.success("Withdrawal Successful!", { id: toastId });
       }
 
       await fetchBalances();
