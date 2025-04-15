@@ -26,7 +26,7 @@ export default function Header() {
       <div className="flex gap-3 items-center">
         <InternetIdentity />
         <Button onClick={() => open()}>
-          {address ? address : "Connect Eth"}
+          {address ? address.slice(0, 6) : "Connect EVM Wallet"}
         </Button>
         <ThemeToggle />
       </div>

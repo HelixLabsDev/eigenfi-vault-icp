@@ -79,12 +79,11 @@ const InternetIdentity = () => {
     <div className="flex w-full items-center space-x-4">
       {isAuthenticated ? (
         <>
-          <p>{principal}</p>
-          <Button onClick={logout}>Sign Out</Button>
+          <Button onClick={logout}>{principal?.slice(0, 5)}</Button>
         </>
       ) : (
         <Button className="w-full" onClick={login}>
-          Sign In
+          Connect Internet Identity
         </Button>
       )}
     </div>

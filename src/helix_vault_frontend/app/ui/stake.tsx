@@ -20,6 +20,7 @@ import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
 import { getHstICPContract } from "@/lib/eth-contrect";
 import { parse18 } from "@/lib/helpers";
 import { useAccount } from "wagmi";
+import Link from "next/link";
 
 export default function StakeDemo() {
   const {
@@ -38,9 +39,9 @@ export default function StakeDemo() {
   const [isDeposit, setIsDeposit] = useState<boolean>(true);
   const [amount, setAmount] = useState<string>("");
 
-  const [ethAddress, setEthAddress] = useState<string>("");
+  // const [ethAddress, setEthAddress] = useState<string>("");
 
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
 
   const fetchBalances = useCallback(async () => {
     if (!actor || !principal || !ledgerActor) {
@@ -144,7 +145,10 @@ export default function StakeDemo() {
         // Perform Deposit
         toast.loading("Depositing...", { id: toastId });
 
-        const res = await actor.deposit_icrc1(amountNat, ethAddress);
+        const res: any = await actor.deposit_icrc1(amountNat, address ?? "");
+        const messageOk = res.Ok;
+        const match = messageOk.match(/0x[a-fA-F0-9]{64}/);
+
         console.log("Deposit Response:", res);
 
         if (!res || "Err" in res) {
@@ -162,13 +166,20 @@ export default function StakeDemo() {
         console.log("status", status);
         console.log("message", message);
 
-        toast.success("Deposit Successful!", { id: toastId });
+        toast.success(
+          <div>
+            <Link href={`https://sepolia.etherscan.io/tx/${match[0]}`}>
+              Transaction Hash
+            </Link>
+          </div>,
+          { id: toastId }
+        );
       } else {
         // Perform Withdrawal
         toast.loading("Withdrawing...", { id: toastId });
 
         try {
-          if (isConnected) return toast.error("Please connect wallet");
+          // if (isConnected) return toast.error("Please connect wallet");
           const { hstICPWriteContract } = await getHstICPContract();
 
           const tx = await hstICPWriteContract?.burn(parse18(amount));
@@ -176,7 +187,7 @@ export default function StakeDemo() {
 
           // const tx_hash =
           //   "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
-          const expected_eth_from = address;
+          const expected_eth_from = address ?? "";
           const expected_contract =
             "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
 
@@ -224,7 +235,15 @@ export default function StakeDemo() {
           console.log("status", status);
           console.log("message", message);
 
-          toast.success("Withdrawal Successful!", { id: toastId });
+          toast.success(
+            <div>
+              Withdraw Successful!{" "}
+              <Link href={`https://sepolia.etherscan.io/tx/${tx.hash}`}>
+                Transaction Hash
+              </Link>
+            </div>,
+            { id: toastId }
+          );
         } catch (err: any) {
           toast.error(err, { id: toastId });
           console.log("err", err);
@@ -294,12 +313,12 @@ export default function StakeDemo() {
       </Tabs>
 
       <div className="shadow hover:bg-primary/5 dark:bg-foreground/5 bg-white h-[340px] rounded-2xl p-4 duration-200 ease-in-out">
-        <Input
+        {/* <Input
           onChange={(e) => setEthAddress(e.target.value)}
           value={ethAddress}
           placeholder="0x..."
           className="w-full py-6"
-        />
+        /> */}
       </div>
 
       <div className="flex flex-col gap-2">
