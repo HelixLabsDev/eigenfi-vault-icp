@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use std::cell::RefCell;
 use candid::{CandidType, Deserialize, Nat};
 use ic_principal::Principal;
@@ -8,6 +9,7 @@ use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
 const ICRC1_LEDGER_CANISTER_ID: &str = "ahw5u-keaaa-aaaaa-qaaha-cai";
+const EVM_BACKEND_CANISTER_ID: &str = "b77ix-eeaaa-aaaaa-qaada-cai";
 
 #[derive(CandidType, Deserialize, Default, Clone)]
 struct UserBalance {
@@ -18,6 +20,7 @@ thread_local! {
     static USER_BALANCES: RefCell<HashMap<Principal, UserBalance>> = RefCell::new(HashMap::new());
     static TOTAL_DEPOSITED: RefCell<Nat> = RefCell::new(Nat::from(0u64));
     static TRANSFER_FEE: RefCell<Nat> = RefCell::new(Nat::from(10_000_u64)); // Default fee, updated lazily
+    static USED_TX_HASHES: RefCell<HashSet<String>> = RefCell::new(HashSet::new()); // to prevent replay attacks
 }
 
 #[ic_cdk::query]
@@ -111,91 +114,108 @@ async fn deposit_icrc1(amount: Nat, eth_address: String) -> Result<String, Strin
 }
 
 #[ic_cdk::update]
-async fn withdraw_icrc1(amount: Nat) -> Result<String, String> {
-    if amount == Nat::from(0u64) {
-        return Err("Withdrawal amount must be greater than zero".to_string());
+async fn unlock_icrc1(
+    tx_hash: String,
+    expected_eth_from: String,
+    evm_amount_18dec: String,
+    withdraw_amount_8dec: Nat,
+    expected_contract: String,
+) -> Result<String, String> {
+    // 1. Prevent replay
+    let already_used = USED_TX_HASHES.with(|set| set.borrow().contains(&tx_hash));
+    if already_used {
+        return Err("Transaction hash has already been used for unlock.".to_string());
     }
 
-    let caller = ic_cdk::api::caller();
-    let token_canister: Principal = ICRC1_LEDGER_CANISTER_ID.parse().unwrap();
-    let fee = TRANSFER_FEE.with(|f| f.borrow().clone());
-    let total_needed = amount.clone() + fee.clone();
-
-    let vault_ledger_balance = match call::<(Account,), (Nat,)>(
-        token_canister,
-        "icrc1_balance_of",
-        (Account { owner: ic_cdk::id(), subaccount: None },),
+    // 2. Verify the burn on EVM
+    let (result,): (Result<String, String>,) = call(
+        EVM_BACKEND_CANISTER_ID.parse().unwrap(),
+        "verify_tx_receipt_with_validation",
+        (
+            tx_hash.clone(),
+            expected_eth_from.clone(),
+            evm_amount_18dec.clone(),
+            expected_contract.clone(),
+        ),
     )
     .await
-    {
-        Ok((balance,)) => balance,
-        Err(e) => return Err(format!("Failed to fetch vault balance: {:?}", e)),
-    };
+    .map_err(|e| format!("Call to EVM RPC failed: {:?}", e))?;
 
-    let withdraw_allowed = USER_BALANCES.with(|balances| {
-        let mut user_balances = balances.borrow_mut();
-        if let Some(user_balance) = user_balances.get_mut(&caller) {
-            if user_balance.balance < amount || vault_ledger_balance < total_needed {
-                return false;
+    match result {
+        Ok(_msg) => {
+            // 3. Use withdraw_amount_8dec directly for nICP transfer
+            let caller = ic_cdk::api::caller();
+            let fee = TRANSFER_FEE.with(|f| f.borrow().clone());
+            let total_amount = withdraw_amount_8dec.clone() + fee.clone();
+
+            let token_canister: Principal = ICRC1_LEDGER_CANISTER_ID.parse().unwrap();
+            let vault_balance = match call::<(Account,), (Nat,)>(
+                token_canister,
+                "icrc1_balance_of",
+                (Account {
+                    owner: ic_cdk::id(),
+                    subaccount: None,
+                },),
+            )
+            .await
+            {
+                Ok((bal,)) => bal,
+                Err(e) => return Err(format!("Failed to get vault balance: {:?}", e)),
+            };
+
+            if vault_balance < total_amount {
+                return Err(format!("Insufficient vault balance to unlock amount + fee."));
             }
-            user_balance.balance -= amount.clone();
-            true
-        } else {
-            false
-        }
-    });
 
-    if !withdraw_allowed {
-        return Err(format!(
-            "Insufficient balance: need {} units (vault pays {} fee), user has {}, vault has {}",
-            amount,
-            fee,
-            get_user_balance(caller),
-            vault_ledger_balance
-        ));
+            let transfer_arg = TransferArg {
+                from_subaccount: None,
+                to: Account {
+                    owner: caller,
+                    subaccount: None,
+                },
+                amount: withdraw_amount_8dec.clone(),
+                fee: Some(fee.clone()),
+                memo: None,
+                created_at_time: None,
+            };
+
+            match call::<(TransferArg,), (Result<Nat, TransferError>,)>(
+                token_canister,
+                "icrc1_transfer",
+                (transfer_arg,),
+            )
+            .await
+            {
+                Ok((Ok(_block_index),)) => {
+                    USED_TX_HASHES.with(|set| set.borrow_mut().insert(tx_hash));
+                    // Update user balance
+USER_BALANCES.with(|balances| {
+    let mut user_balances = balances.borrow_mut();
+    if let Some(user_balance) = user_balances.get_mut(&caller) {
+        if user_balance.balance >= withdraw_amount_8dec {
+            user_balance.balance -= withdraw_amount_8dec.clone();
+        }
     }
+});
 
-    let transfer_arg = TransferArg {
-        from_subaccount: None,
-        to: Account { owner: caller, subaccount: None },
-        amount: amount.clone(),
-        fee: Some(fee.clone()),
-        memo: None,
-        created_at_time: None,
-    };
+// Update vault balance
+TOTAL_DEPOSITED.with(|total| {
+    let mut total_deposited = total.borrow_mut();
+    if *total_deposited >= withdraw_amount_8dec {
+        *total_deposited -= withdraw_amount_8dec.clone();
+    }
+});
 
-    match call::<(TransferArg,), (Result<Nat, TransferError>,)>(
-        token_canister,
-        "icrc1_transfer",
-        (transfer_arg,),
-    )
-    .await
-    {
-        Ok((Ok(_block_index),)) => {
-            TOTAL_DEPOSITED.with(|total| {
-                let mut total_deposited = total.borrow_mut();
-                *total_deposited -= amount.clone();
-            });
-            Ok(format!("Withdrawal successful, {} units sent (vault paid {} fee)", amount, fee))
-        }
-        Ok((Err(e),)) => {
-            USER_BALANCES.with(|balances| {
-                let mut user_balances = balances.borrow_mut();
-                if let Some(user_balance) = user_balances.get_mut(&caller) {
-                    user_balance.balance += amount.clone();
+                    Ok(format!(
+                        "Unlocked {} nICP to caller. Verified burn on Ethereum.",
+                        withdraw_amount_8dec
+                    ))
                 }
-            });
-            Err(format!("Transfer failed: {:?}", e))
+                Ok((Err(e),)) => Err(format!("Transfer failed: {:?}", e)),
+                Err(e) => Err(format!("Transfer call failed: {:?}", e)),
+            }
         }
-        Err(e) => {
-            USER_BALANCES.with(|balances| {
-                let mut user_balances = balances.borrow_mut();
-                if let Some(user_balance) = user_balances.get_mut(&caller) {
-                    user_balance.balance += amount.clone();
-                }
-            });
-            Err(format!("Call failed: {:?}", e))
-        }
+        Err(err_msg) => Err(format!("Burn verification failed: {}", err_msg)),
     }
 }
 

@@ -162,8 +162,36 @@ export default function StakeDemo() {
         // Perform Withdrawal
         toast.loading("Withdrawing...", { id: toastId });
 
-        const res = await actor.withdraw_icrc1(amountNat);
-        console.log("Withdraw Response:", res);
+        const tx_hash =
+          "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
+        const expected_eth_from = "0xf9bb58B6725e7e62E5786b6f670FBfB1a52d48ad";
+        const expected_contract = "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
+
+        // Validation
+        if (!/^\d*\.?\d*$/.test(amount)) {
+          throw new Error("Please enter a valid amount");
+        }
+
+        // ✅ 18-decimal string (for EVM burn)
+        const expected_amount_18dec = tokensToUnits(amount, 18)?.toString();
+        if (!expected_amount_18dec) {
+          throw new Error("Invalid EVM amount: cannot convert to base units");
+        }
+
+        // ✅ 8-decimal BigInt (for nICP withdraw)
+        const withdraw_amount_8dec = convertToNat(amount); // BigInt
+
+        // Debug
+        console.log("expected_amount_18dec:", expected_amount_18dec);
+        console.log("withdraw_amount_8dec:", withdraw_amount_8dec.toString());
+
+        const res = await actor.unlock_icrc1(
+          tx_hash,
+          expected_eth_from,
+          expected_amount_18dec,
+          withdraw_amount_8dec,
+          expected_contract
+        );
 
         if (!res || "Err" in res) {
           toast.error(`Withdrawal failed: ${JSON.stringify(res.Err || res)}`, {
@@ -281,18 +309,27 @@ interface AmountInputProps {
 
 function AmountInput({ amount, onChange, balance }: AmountInputProps) {
   const handleChange = (value: string) => {
-    const sanitizedValue = value.replace(/[^0-9.]/g, "");
-    const parts = sanitizedValue.split(".");
-    const wholePart = parts[0];
-    const fractionalPart = parts[1] ? parts[1].slice(0, 8) : "";
-    let newValue = wholePart + (fractionalPart ? "." + fractionalPart : "");
+    // Allow digits and one dot
+    let sanitized = value.replace(/[^0-9.]/g, "");
 
-    if (balance !== undefined) {
-      const numericValue = parseFloat(newValue);
-      if (!isNaN(numericValue) && numericValue > balance) {
-        newValue = balance.toString();
-      }
+    // Prevent multiple dots
+    const dotCount = (sanitized.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      sanitized = sanitized.substring(0, sanitized.length - 1);
     }
+
+    // Preserve input like "0.", ".1", "0.01"
+    const parts = sanitized.split(".");
+    const wholePart = parts[0] || "0";
+    let newValue = wholePart;
+
+    if (sanitized.includes(".")) {
+      const fractionalPart = parts[1]?.slice(0, 8) || "";
+      newValue += "." + fractionalPart;
+    }
+
+    // Optional: prevent input longer than 18 digits
+    if (newValue.length > 24) return;
 
     onChange(newValue);
   };
@@ -322,7 +359,11 @@ function AmountInput({ amount, onChange, balance }: AmountInputProps) {
         </picture>
       </div>
       <div className="absolute flex gap-1 bottom-4 left-4 text-xs text-muted-foreground/50">
-        <div>${Number(amount) * 6.5}</div>
+        <div>
+          {Number.isNaN(Number(amount)) || amount === ""
+            ? "$0.00"
+            : `$${(Number(amount) * 6.5).toFixed(2)}`}
+        </div>
       </div>
       <div className="absolute bottom-3 right-4 text-xs text-primary flex gap-0.5">
         <span className="py-1 text-foreground/80">{balance} ICP</span>

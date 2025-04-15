@@ -26,14 +26,23 @@ export function convertNatToNumber(nat: string | number, decimals = 8): number {
   return result;
 }
 
-export const convertToNat = (value: string): bigint => {
-  // Remove the decimal point and pad with zeros if necessary
-  const [wholePart, fractionalPart = ""] = value.split(".");
-  const paddedFractionalPart = fractionalPart.padEnd(8, "0");
-  const combinedValue = wholePart + paddedFractionalPart;
+// export const convertToNat = (value: string): bigint => {
+//   // Remove the decimal point and pad with zeros if necessary
+//   const [wholePart, fractionalPart = ""] = value.split(".");
+//   const paddedFractionalPart = fractionalPart.padEnd(8, "0");
+//   const combinedValue = wholePart + paddedFractionalPart;
 
-  // Remove leading zeros and convert to BigInt
-  return BigInt(combinedValue.replace(/^0+/, "") || "0");
+//   // Remove leading zeros and convert to BigInt
+//   return BigInt(combinedValue.replace(/^0+/, "") || "0");
+// };
+
+export const convertToNat = (value: string): bigint => {
+  const [wholePart, fractionalPart = ""] = value.split(".");
+  const paddedFractionalPart = fractionalPart.padEnd(8, "0").slice(0, 8); // always 8 decimals
+  const combined = `${wholePart}${paddedFractionalPart}`;
+
+  // Make sure to preserve "0" instead of empty string
+  return BigInt(combined.replace(/^0+(?!$)/, ""));
 };
 
 export function tokensToUnits(
