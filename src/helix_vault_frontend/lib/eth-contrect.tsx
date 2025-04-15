@@ -1,15 +1,14 @@
 import { ethers } from "ethers";
 import { getContractEssentials } from "./helpers";
-import eigenFiPoolAbi from "../abi/HelixStakedICP.json";
+import hstICPAbi from "../abi/HelixStakedICP.json";
 
 // Define the contract address
-const eigenFiPoolContract: string =
-  "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
+const hstICPContract: string = "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
 
 // Define the return type interface
-interface EigenFiPoolContracts {
-  eigenFiPoolReadContract: ethers.Contract;
-  eigenFiPoolWriteContract: ethers.Contract;
+interface HstICPContracts {
+  hstICPReadContract: ethers.Contract;
+  hstICPWriteContract: ethers.Contract;
   provider: ethers.providers.Provider;
   signer: ethers.Signer;
 }
@@ -18,23 +17,23 @@ interface EigenFiPoolContracts {
  * Gets the EigenFi pool contracts for reading and writing
  * @returns Object containing read and write contracts, provider and signer
  */
-async function getEigenFiPoolContract(): Promise<EigenFiPoolContracts> {
+async function getHstICPContract(): Promise<HstICPContracts> {
   const { provider, signer } = await getContractEssentials();
 
-  const eigenFiPoolReadContract = new ethers.Contract(
-    eigenFiPoolContract,
-    eigenFiPoolAbi,
+  const hstICPReadContract = new ethers.Contract(
+    hstICPContract,
+    hstICPAbi,
     provider
   );
 
-  const eigenFiPoolWriteContract = eigenFiPoolReadContract.connect(signer);
+  const hstICPWriteContract = hstICPReadContract.connect(signer);
 
   return {
-    eigenFiPoolReadContract,
-    eigenFiPoolWriteContract,
+    hstICPReadContract,
+    hstICPWriteContract,
     provider,
     signer,
   };
 }
 
-export { getEigenFiPoolContract };
+export { getHstICPContract };
