@@ -19,6 +19,7 @@ import { vaultPrincipal } from "@/lib/constant";
 import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
 import { getHstICPContract } from "@/lib/eth-contrect";
 import { parse18 } from "@/lib/helpers";
+import { useAccount } from "wagmi";
 
 export default function StakeDemo() {
   const {
@@ -38,6 +39,8 @@ export default function StakeDemo() {
   const [amount, setAmount] = useState<string>("");
 
   const [ethAddress, setEthAddress] = useState<string>("");
+
+  const { isConnected, address } = useAccount();
 
   const fetchBalances = useCallback(async () => {
     if (!actor || !principal || !ledgerActor) {
@@ -165,6 +168,7 @@ export default function StakeDemo() {
         toast.loading("Withdrawing...", { id: toastId });
 
         try {
+          if (isConnected) return toast.error("Please connect wallet");
           const { hstICPWriteContract } = await getHstICPContract();
 
           const tx = await hstICPWriteContract?.burn(parse18(amount));
@@ -172,8 +176,7 @@ export default function StakeDemo() {
 
           // const tx_hash =
           //   "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
-          const expected_eth_from =
-            "0xf9bb58B6725e7e62E5786b6f670FBfB1a52d48ad";
+          const expected_eth_from = address;
           const expected_contract =
             "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
 
