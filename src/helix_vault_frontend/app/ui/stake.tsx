@@ -17,6 +17,8 @@ import {
 import InternetIdentity from "./dfinity";
 import { vaultPrincipal } from "@/lib/constant";
 import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
+import { getEigenFiPoolContract } from "@/lib/eth-contrect";
+import { parse18 } from "@/lib/helpers";
 
 export default function StakeDemo() {
   const {
@@ -161,6 +163,14 @@ export default function StakeDemo() {
       } else {
         // Perform Withdrawal
         toast.loading("Withdrawing...", { id: toastId });
+
+        const { eigenFiPoolWriteContract } = await getEigenFiPoolContract();
+
+        const tx = await eigenFiPoolWriteContract?.burn(
+          genAddresses.stETH,
+          parse18(amount)
+        );
+        await tx.wait();
 
         const tx_hash =
           "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
