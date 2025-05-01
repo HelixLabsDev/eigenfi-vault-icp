@@ -77,13 +77,16 @@ dfx generate helix_vault_backend
 Copy the generated folders:
 
 ```bash
-cp -r .dfx/local/canisters/helix_vault_backend/declarations/helix_vault_backend src/helix_vault_frontend/
-cp -r .dfx/local/canisters/icrc1-ledger/declarations/icrc1-ledger src/helix_vault_frontend/
+cp -r .dfx/local/canisters/helix_vault_backend/declarations/helix_vault_backend
 ```
 
----
+paste here: src/helix_vault_frontend/
 
 ## 🚀 Deploy Frontend
+
+```bash
+cd src/helix_vault_frontend && npm install && cd ../..
+```
 
 ```bash
 ./deploy_front.sh

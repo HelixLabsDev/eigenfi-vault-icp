@@ -17,7 +17,7 @@ import {
 import InternetIdentity from "./dfinity";
 import { vaultPrincipal } from "@/lib/constant";
 import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
-import { getHstICPContract } from "@/lib/eth-contrect";
+import { getHstICPContract } from "@/lib/eth-contract";
 import { parse18 } from "@/lib/helpers";
 import { useAccount } from "wagmi";
 import Link from "next/link";
@@ -149,6 +149,11 @@ export default function StakeDemo() {
         const messageOk = res.Ok;
         const match = messageOk.match(/0x[a-fA-F0-9]{64}/);
 
+        if (!match) {
+          toast.error("Tx hash not found in response", { id: toastId });
+          return;
+        }
+
         console.log("Deposit Response:", res);
 
         if (!res || "Err" in res) {
@@ -165,10 +170,9 @@ export default function StakeDemo() {
 
         console.log("status", status);
         console.log("message", message);
-
         toast.success(
           <div>
-            <Link href={`https://sepolia.etherscan.io/tx/${match[0]}`}>
+            <Link href={`https://sepolia.arbiscan.io/tx/${match[0]}`}>
               Transaction Hash
             </Link>
           </div>,
@@ -184,12 +188,9 @@ export default function StakeDemo() {
 
           const tx = await hstICPWriteContract?.burn(parse18(amount));
           await tx.wait();
-
-          // const tx_hash =
-          //   "0x50e4b4da1f0d73f72c4e6285a34635466982b4fe8526889e72f21bb950b99725";
           const expected_eth_from = address ?? "";
           const expected_contract =
-            "0xce2a90FA013ddcFda275DA27Ed80e8eCf36e200F";
+            "0x0FDA998aFd341Ad29B63196994b4f9a02B6cf40B";
 
           // Validation
           if (!/^\d*\.?\d*$/.test(amount)) {
@@ -238,7 +239,7 @@ export default function StakeDemo() {
           toast.success(
             <div>
               Withdraw Successful!{" "}
-              <Link href={`https://sepolia.etherscan.io/tx/${tx.hash}`}>
+              <Link href={`https://sepolia.arbiscan.io/tx/${tx.hash}`}>
                 Transaction Hash
               </Link>
             </div>,

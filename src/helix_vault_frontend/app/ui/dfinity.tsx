@@ -46,6 +46,7 @@ const InternetIdentity = () => {
       setActor(actor);
       setIsAuthenticated(true);
       setPrincipal(identity.getPrincipal().toText().toString());
+      console.log("idd: ", principal);
 
       const ledgerActor = createLedgerActor(ledgerActorAddress, {
         agentOptions: { identity },
@@ -79,7 +80,7 @@ const InternetIdentity = () => {
     <div className="flex w-full items-center space-x-4">
       {isAuthenticated ? (
         <>
-          <Button onClick={logout}>{principal?.slice(0, 5)}</Button>
+          <Button onClick={logout}>{principal}</Button>
         </>
       ) : (
         <Button className="w-full" onClick={login}>
