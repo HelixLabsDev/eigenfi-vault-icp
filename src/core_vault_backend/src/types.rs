@@ -3,7 +3,6 @@ use candid::CandidType;
 use std::collections::HashSet;
 use ic_principal::Principal;
 
-
 #[derive(CandidType, Serialize, Deserialize, Clone)]
 pub struct GovernanceProposal {
     pub id: u64,

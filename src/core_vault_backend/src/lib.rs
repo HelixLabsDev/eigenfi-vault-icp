@@ -1,5 +1,6 @@
 pub mod governance;
 pub mod types;
+mod vault_factory;
 
 use governance::*;
 use types::*;
@@ -35,13 +36,12 @@ fn vote_proposal(id: u64, approve: bool) -> VoteResult {
 }
 
 #[update]
-fn execute_proposal(id: u64) -> VoteResult {
-    match execute_proposal_impl(id) {
+async fn execute_proposal(id: u64) -> VoteResult {
+    match execute_proposal_impl(id).await {
         Ok(_) => VoteResult::Ok,
         Err(e) => VoteResult::Err(e),
     }
 }
-
 
 /// Get a specific proposal by ID
 #[query]
