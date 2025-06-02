@@ -1,0 +1,33 @@
+use serde::{Deserialize, Serialize};
+use candid::CandidType;
+use std::collections::HashSet;
+use ic_principal::Principal;
+
+
+#[derive(CandidType, Serialize, Deserialize, Clone)]
+pub struct GovernanceProposal {
+    pub id: u64,
+    pub proposer: String,
+    pub title: String,
+    pub description: String,
+    pub action: ProposalAction,
+    pub status: ProposalStatus,
+    pub votes_for: u64,
+    pub votes_against: u64,
+    pub deadline: u64,
+    pub voters: HashSet<Principal>, 
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone)]
+pub enum ProposalAction {
+    CreateVault { token_symbol: String },
+    UpgradeVault { vault_id: String, new_code_hash: Vec<u8> },
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, PartialEq)]
+pub enum ProposalStatus {
+    Pending,
+    Approved,
+    Rejected,
+    Executed,
+}

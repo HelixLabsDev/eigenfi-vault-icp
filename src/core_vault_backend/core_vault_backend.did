@@ -1,0 +1,37 @@
+type ProposalAction = variant {
+  CreateVault : record { token_symbol : text };
+  UpgradeVault : record { vault_id : text; new_code_hash : vec nat8 };
+};
+
+type ProposalStatus = variant {
+  Pending;
+  Approved;
+  Rejected;
+  Executed;
+};
+
+type VoteResult = variant {
+  Ok : null;
+  Err : text;
+};
+
+type GovernanceProposal = record {
+  id : nat64;
+  proposer : text;
+  title : text;
+  description : text;
+  action : ProposalAction;
+  status : ProposalStatus;
+  votes_for : nat64;
+  votes_against : nat64;
+  deadline : nat64;
+  voters: vec principal;
+};
+
+service : {
+  submit_proposal : (GovernanceProposal) -> (nat64);
+  vote_proposal : (nat64, bool) -> (VoteResult);
+  execute_proposal : (nat64) -> (VoteResult);
+  get_proposal : (nat64) -> (opt GovernanceProposal) query;
+  list_proposals : () -> (vec GovernanceProposal) query;
+};

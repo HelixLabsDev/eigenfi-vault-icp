@@ -1,5 +1,6 @@
 [workspace]
 members = [
-    "src/helix_vault_backend"
+    "src/helix_vault_backend",
+    "src/core_vault_backend"
 ]
 resolver = "2"
