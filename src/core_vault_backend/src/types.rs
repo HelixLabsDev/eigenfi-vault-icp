@@ -18,6 +18,14 @@ pub struct GovernanceProposal {
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone)]
+pub struct ProposalInput {
+    pub title: String,
+    pub description: String,
+    pub action: ProposalAction,
+    pub duration_secs: u64, // ⬅️ this is the only new thing needed
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone)]
 pub enum ProposalAction {
     CreateVault { token_symbol: String },
     UpgradeVault { vault_id: String, new_code_hash: Vec<u8> },

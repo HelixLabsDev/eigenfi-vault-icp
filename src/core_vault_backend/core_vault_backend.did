@@ -24,16 +24,16 @@ type GovernanceProposal = record {
 };
 
 service : {
-  // Submit: only provides title, description, action — the rest is filled in
   submit_proposal : (record {
     title : text;
     description : text;
     action : ProposalAction;
+    duration_secs : nat64; // ✅ ADDED
   }) -> (nat64);
 
   vote_proposal : (nat64, bool) -> (variant { Ok : null; Err : text });
 
-execute_proposal : (nat64) -> (variant { Ok : principal; Err : text });
+  execute_proposal : (nat64) -> (variant { Ok : principal; Err : text });
 
   get_proposal : (nat64) -> (opt GovernanceProposal) query;
 

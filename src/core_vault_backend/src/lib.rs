@@ -22,20 +22,30 @@ pub struct ProposalInput {
     pub title: String,
     pub description: String,
     pub action: ProposalAction,
+    pub duration_secs: u64,
 }
 
 #[update]
 fn submit_proposal(input: ProposalInput) -> u64 {
+    let caller = ic_cdk::caller();
+    if caller == Principal::anonymous() {
+        ic_cdk::trap("Anonymous principals cannot submit proposals.");
+    }
+
+    if input.duration_secs < 60 * 60 {
+        ic_cdk::trap("Proposal duration too short. Minimum is 1 hour.");
+    }
+
     let proposal = GovernanceProposal {
-        id: 0, // will be overwritten
-        proposer: ic_cdk::api::caller().to_text(),
+        id: 0, // will be overwritten by `submit_proposal_impl`
+        proposer: caller.to_text(),
         title: input.title,
         description: input.description,
         action: input.action,
         status: ProposalStatus::Pending,
         votes_for: 0,
         votes_against: 0,
-        deadline: current_timestamp() + 60 * 60 * 24, // 24 hours
+        deadline: current_timestamp() + input.duration_secs,
         voters: HashSet::new(),
     };
 
@@ -55,11 +65,17 @@ enum VoteResult {
 
 #[update]
 fn vote_proposal(id: u64, approve: bool) -> VoteResult {
-    match vote_proposal_impl(id, approve) {
+    let caller = ic_cdk::caller();
+    if caller == Principal::anonymous() {
+        return VoteResult::Err("Anonymous principals cannot vote.".into());
+    }
+
+    match vote_proposal_impl(id, approve, caller) {
         Ok(_) => VoteResult::Ok,
         Err(e) => VoteResult::Err(e),
     }
 }
+
 
 #[update]
 async fn execute_proposal(id: u64) -> Result<Principal, String> {

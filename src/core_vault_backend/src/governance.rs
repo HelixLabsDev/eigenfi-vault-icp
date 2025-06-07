@@ -1,7 +1,7 @@
 use crate::types::*;
 use std::cell::RefCell;
-use ic_cdk::api;
 use std::collections::HashSet;
+use ic_cdk::api;
 use ic_principal::Principal;
 use ic_cdk_macros::query;
 
@@ -9,18 +9,19 @@ thread_local! {
     static PROPOSALS: RefCell<Vec<GovernanceProposal>> = RefCell::new(Vec::new());
     static NEXT_ID: RefCell<u64> = RefCell::new(0);
     static ALL_VOTERS: RefCell<HashSet<Principal>> = RefCell::new(HashSet::new());
+    static CREATED_VAULTS: RefCell<Vec<Principal>> = RefCell::new(Vec::new());
 }
 
 // Initialize canister state
 pub fn init_state() {
     NEXT_ID.with(|id| *id.borrow_mut() = 0);
     PROPOSALS.with(|p| p.borrow_mut().clear());
+    ALL_VOTERS.with(|v| v.borrow_mut().clear());
+    CREATED_VAULTS.with(|v| v.borrow_mut().clear());
 }
 
-// Submit a new proposal
+// Submit a new proposal (from lib.rs)
 pub fn submit_proposal_impl(mut proposal: GovernanceProposal) -> u64 {
-    let now = current_timestamp();
-
     proposal.id = NEXT_ID.with(|id| {
         let mut counter = id.borrow_mut();
         let assigned_id = *counter;
@@ -31,66 +32,55 @@ pub fn submit_proposal_impl(mut proposal: GovernanceProposal) -> u64 {
     proposal.status = ProposalStatus::Pending;
     proposal.votes_for = 0;
     proposal.votes_against = 0;
-    proposal.deadline = now + 60 * 60 * 24;
     proposal.voters = HashSet::new();
 
     PROPOSALS.with(|p| p.borrow_mut().push(proposal.clone()));
-
     proposal.id
 }
 
-// Cast a vote on a proposal
-pub fn vote_proposal_impl(id: u64, approve: bool) -> Result<(), String> {
-    let caller = ic_cdk::api::caller();
-
+// Vote on proposal
+pub fn vote_proposal_impl(proposal_id: u64, approve: bool, voter: Principal) -> Result<(), String> {
     PROPOSALS.with(|p| {
         let mut proposals = p.borrow_mut();
 
-        match proposals.iter_mut().find(|p| p.id == id) {
-            Some(proposal) => {
-                if proposal.status != ProposalStatus::Pending {
-                    return Err("Proposal is already finalized".to_string());
-                }
-                let now = current_timestamp();
-                if now > proposal.deadline {
-                    proposal.status = ProposalStatus::Rejected;
-                    return Err("Proposal voting deadline has passed. Proposal rejected.".to_string());
-                }
-                if proposal.voters.contains(&caller) {
-                    return Err("You have already voted".to_string());
-                }
+        let proposal = proposals.iter_mut().find(|p| p.id == proposal_id)
+            .ok_or("Proposal not found".to_string())?;
 
-                proposal.voters.insert(caller);
-
-                ALL_VOTERS.with(|set| {
-                    set.borrow_mut().insert(caller);
-                });
-
-
-                if approve {
-                    proposal.votes_for += 1;
-                } else {
-                    proposal.votes_against += 1;
-                }
-
-                Ok(())
-            }
-            None => Err("Proposal not found".to_string()),
+        if proposal.status != ProposalStatus::Pending {
+            return Err("Proposal is already finalized".to_string());
         }
+
+        let now = current_timestamp();
+        if now > proposal.deadline {
+            proposal.status = ProposalStatus::Rejected;
+            return Err("Proposal voting deadline has passed.".to_string());
+        }
+
+        if proposal.voters.contains(&voter) {
+            return Err("You have already voted".to_string());
+        }
+
+        proposal.voters.insert(voter);
+
+        ALL_VOTERS.with(|set| {
+            set.borrow_mut().insert(voter);
+        });
+
+        if approve {
+            proposal.votes_for += 1;
+        } else {
+            proposal.votes_against += 1;
+        }
+
+        Ok(())
     })
 }
 
+// Execute if passed
 pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
-    let mut proposal_opt = None;
-
-    PROPOSALS.with(|p| {
-        let mut proposals = p.borrow_mut();
-        if let Some(found) = proposals.iter_mut().find(|p| p.id == id) {
-            if found.status != ProposalStatus::Pending {
-                return;
-            }
-            proposal_opt = Some(found.clone());
-        }
+    let proposal_opt = PROPOSALS.with(|p| {
+        let proposals = p.borrow();
+        proposals.iter().find(|p| p.id == id).cloned()
     });
 
     let mut proposal = proposal_opt.ok_or("Proposal not found".to_string())?;
@@ -100,10 +90,10 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
     }
 
     let now = current_timestamp();
-    if now > proposal.deadline {
-        proposal.status = ProposalStatus::Rejected;
-        update_proposal_status(id, proposal.status.clone());
-        return Err("Proposal deadline passed. Auto-rejected.".to_string());
+
+    // 🔐 BLOCK execution before deadline
+    if now < proposal.deadline {
+        return Err("Voting period is still active. Wait until deadline ends.".to_string());
     }
 
     let total_votes = proposal.votes_for + proposal.votes_against;
@@ -111,56 +101,91 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
     let quorum_required = ((total_voters as f64) * 0.3).ceil() as u64;
 
     if total_votes < quorum_required {
-        proposal.status = ProposalStatus::Rejected;
-        update_proposal_status(id, proposal.status.clone());
+        update_proposal_status(id, ProposalStatus::Rejected);
         return Err("Quorum not met. Proposal rejected.".to_string());
     }
 
     let approval_ratio = proposal.votes_for as f64 / total_votes as f64;
-    if approval_ratio <= 0.51 {
-        proposal.status = ProposalStatus::Rejected;
-        update_proposal_status(id, proposal.status.clone());
+    if approval_ratio < 0.51 {
+        update_proposal_status(id, ProposalStatus::Rejected);
         return Err("Proposal rejected due to insufficient support.".to_string());
     }
 
-    // ✅ Passed: Execute Action
-    if let ProposalAction::CreateVault { token_symbol } = &proposal.action {
-        match crate::vault_factory::create_helix_vault(token_symbol.clone()).await {
-            Ok(vault_id) => {
-                proposal.status = ProposalStatus::Approved;
-                update_proposal_status(id, proposal.status.clone());
-                record_created_vault(vault_id); // <-- registry
-                return Ok(vault_id); // <-- 👈 show it
+    match &proposal.action {
+        ProposalAction::CreateVault { token_symbol } => {
+            match crate::vault_factory::create_helix_vault(token_symbol.clone()).await {
+                Ok(vault_id) => {
+                    update_proposal_status(id, ProposalStatus::Approved);
+                    record_created_vault(vault_id);
+                    return Ok(vault_id);
+                }
+                Err(err) => {
+                    update_proposal_status(id, ProposalStatus::Rejected);
+                    return Err(format!("Vault creation failed: {}", err));
+                }
             }
-            Err(err) => {
-                proposal.status = ProposalStatus::Rejected;
-                update_proposal_status(id, proposal.status.clone());
-                return Err(format!("Vault creation failed: {}", err));
+        }
+
+        ProposalAction::UpgradeVault { vault_id, new_code_hash } => {
+            use ic_cdk::api::management_canister::main::{
+                install_code, CanisterInstallMode, InstallCodeArgument
+            };
+
+            let target = Principal::from_text(vault_id.clone())
+                .map_err(|e| format!("Invalid vault_id: {}", e))?;
+
+            let upgrade_args = InstallCodeArgument {
+                mode: CanisterInstallMode::Upgrade,
+                canister_id: target,
+                wasm_module: new_code_hash.clone(),
+                arg: vec![], // No init args
+            };
+
+            match install_code(upgrade_args).await {
+                Ok(_) => {
+                    update_proposal_status(id, ProposalStatus::Approved);
+                    return Ok(target);
+                }
+                Err(e) => {
+                    update_proposal_status(id, ProposalStatus::Rejected);
+                    return Err(format!("Upgrade failed: {:?}", e));
+                }
             }
         }
     }
+
+    // fallback
     Err("Unsupported proposal action.".into())
+
 }
 
-// Get a specific proposal
+// Query: single proposal
 pub fn get_proposal_impl(id: u64) -> Option<GovernanceProposal> {
     PROPOSALS.with(|p| p.borrow().iter().find(|p| p.id == id).cloned())
 }
 
-// List all proposals
+// Query: all proposals
 pub fn list_proposals_impl() -> Vec<GovernanceProposal> {
     PROPOSALS.with(|p| p.borrow().clone())
 }
 
-// Helper: get current UNIX timestamp
-fn current_timestamp() -> u64 {
-    api::time() / 1_000_000_000 // convert from nanoseconds to seconds
+// Query: created vaults
+#[query]
+pub fn list_created_vaults() -> Vec<Principal> {
+    CREATED_VAULTS.with(|v| v.borrow().clone())
 }
 
+// Internal: timestamp
+fn current_timestamp() -> u64 {
+    api::time() / 1_000_000_000
+}
+
+// Internal: voter count
 fn total_registered_voters() -> usize {
     ALL_VOTERS.with(|set| set.borrow().len())
 }
 
+// Internal: update status
 fn update_proposal_status(id: u64, new_status: ProposalStatus) {
     PROPOSALS.with(|p| {
         let mut proposals = p.borrow_mut();
@@ -170,16 +195,7 @@ fn update_proposal_status(id: u64, new_status: ProposalStatus) {
     });
 }
 
-thread_local! {
-    static CREATED_VAULTS: RefCell<Vec<Principal>> = RefCell::new(Vec::new());
-}
-
-
+// Internal: record vault ID
 fn record_created_vault(id: Principal) {
     CREATED_VAULTS.with(|v| v.borrow_mut().push(id));
-}
-
-#[query]
-pub fn list_created_vaults() -> Vec<Principal> {
-    CREATED_VAULTS.with(|v| v.borrow().clone())
 }
