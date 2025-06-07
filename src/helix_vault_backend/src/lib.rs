@@ -8,8 +8,8 @@ use icrc_ledger_types::icrc1::transfer::{TransferArg, TransferError};
 use icrc_ledger_types::icrc1::account::Account;
 use icrc_ledger_types::icrc2::transfer_from::{TransferFromArgs, TransferFromError};
 
-const ICRC1_LEDGER_CANISTER_ID: &str = "dmalx-m4aaa-aaaaa-qaanq-cai";
-const EVM_BACKEND_CANISTER_ID: &str = "dccg7-xmaaa-aaaaa-qaamq-cai";
+const ICRC1_LEDGER_CANISTER_ID: &str = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+const EVM_BACKEND_CANISTER_ID: &str = "be2us-64aaa-aaaaa-qaabq-cai";
 
 #[derive(CandidType, Deserialize, Default, Clone)]
 struct UserBalance {
@@ -94,7 +94,7 @@ async fn deposit_icrc1(amount: Nat, eth_address: String) -> Result<String, Strin
                 *total_deposited += amount.clone();
             });
             let test_evm_rpc_canister: Principal = EVM_BACKEND_CANISTER_ID.parse().unwrap();
-            let contract = "0x0FDA998aFd341Ad29B63196994b4f9a02B6cf40B".to_string();
+            let contract = "0x25601b4776537E5aF36F650797C86eF4138FA4bC".to_string();
             let scaled_amount = (amount.0.clone() * 10u128.pow(10)).to_string();
             let result: (Result<String, String>,) = call(
                 test_evm_rpc_canister,
@@ -240,4 +240,3 @@ async fn sync_state() -> Result<(), String> {
     TRANSFER_FEE.with(|f| *f.borrow_mut() = fee);
     Ok(())
 }
-

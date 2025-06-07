@@ -10,14 +10,9 @@ type ProposalStatus = variant {
   Executed;
 };
 
-type VoteResult = variant {
-  Ok : null;
-  Err : text;
-};
-
 type GovernanceProposal = record {
   id : nat64;
-  proposer : text;
+  proposer : principal;
   title : text;
   description : text;
   action : ProposalAction;
@@ -29,9 +24,20 @@ type GovernanceProposal = record {
 };
 
 service : {
-  submit_proposal : (GovernanceProposal) -> (nat64);
-  vote_proposal : (nat64, bool) -> (VoteResult);
-  execute_proposal : (nat64) -> (VoteResult);
+  // Submit: only provides title, description, action — the rest is filled in
+  submit_proposal : (record {
+    title : text;
+    description : text;
+    action : ProposalAction;
+  }) -> (nat64);
+
+  vote_proposal : (nat64, bool) -> (variant { Ok : null; Err : text });
+
+execute_proposal : (nat64) -> (variant { Ok : principal; Err : text });
+
   get_proposal : (nat64) -> (opt GovernanceProposal) query;
+
   list_proposals : () -> (vec GovernanceProposal) query;
+
+  list_created_vaults : () -> (vec principal) query;
 };

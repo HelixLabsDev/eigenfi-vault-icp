@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use ic_cdk::api;
 use std::collections::HashSet;
 use ic_principal::Principal;
+use ic_cdk_macros::query;
 
 thread_local! {
     static PROPOSALS: RefCell<Vec<GovernanceProposal>> = RefCell::new(Vec::new());
@@ -79,8 +80,7 @@ pub fn vote_proposal_impl(id: u64, approve: bool) -> Result<(), String> {
     })
 }
 
-pub async fn execute_proposal_impl(id: u64) -> Result<(), String> {
-    // First, extract proposal out of thread_local so we can `.await` outside
+pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
     let mut proposal_opt = None;
 
     PROPOSALS.with(|p| {
@@ -117,28 +117,30 @@ pub async fn execute_proposal_impl(id: u64) -> Result<(), String> {
     }
 
     let approval_ratio = proposal.votes_for as f64 / total_votes as f64;
-    if approval_ratio > 0.51 {
-        // ✅ Passed — try to create vault
-        if let ProposalAction::CreateVault { token_symbol } = &proposal.action {
-            match crate::vault_factory::create_helix_vault(token_symbol.clone()).await {
-                Ok(_) => {
-                    proposal.status = ProposalStatus::Approved;
-                }
-                Err(err) => {
-                    proposal.status = ProposalStatus::Rejected;
-                    update_proposal_status(id, proposal.status.clone());
-                    return Err(format!("Vault creation failed: {}", err));
-                }
-            }
-        }
-    } else {
+    if approval_ratio <= 0.51 {
         proposal.status = ProposalStatus::Rejected;
+        update_proposal_status(id, proposal.status.clone());
+        return Err("Proposal rejected due to insufficient support.".to_string());
     }
 
-    update_proposal_status(id, proposal.status.clone());
-    Ok(())
+    // ✅ Passed: Execute Action
+    if let ProposalAction::CreateVault { token_symbol } = &proposal.action {
+        match crate::vault_factory::create_helix_vault(token_symbol.clone()).await {
+            Ok(vault_id) => {
+                proposal.status = ProposalStatus::Approved;
+                update_proposal_status(id, proposal.status.clone());
+                record_created_vault(vault_id); // <-- registry
+                return Ok(vault_id); // <-- 👈 show it
+            }
+            Err(err) => {
+                proposal.status = ProposalStatus::Rejected;
+                update_proposal_status(id, proposal.status.clone());
+                return Err(format!("Vault creation failed: {}", err));
+            }
+        }
+    }
+    Err("Unsupported proposal action.".into())
 }
-
 
 // Get a specific proposal
 pub fn get_proposal_impl(id: u64) -> Option<GovernanceProposal> {
@@ -166,4 +168,18 @@ fn update_proposal_status(id: u64, new_status: ProposalStatus) {
             found.status = new_status;
         }
     });
+}
+
+thread_local! {
+    static CREATED_VAULTS: RefCell<Vec<Principal>> = RefCell::new(Vec::new());
+}
+
+
+fn record_created_vault(id: Principal) {
+    CREATED_VAULTS.with(|v| v.borrow_mut().push(id));
+}
+
+#[query]
+pub fn list_created_vaults() -> Vec<Principal> {
+    CREATED_VAULTS.with(|v| v.borrow().clone())
 }
