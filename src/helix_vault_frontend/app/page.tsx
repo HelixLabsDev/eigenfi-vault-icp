@@ -3,9 +3,10 @@
 import GradientText from "@/app/ui/gradient-text";
 import { Skeleton } from "@/app/ui/skeleton";
 import MainnetCard from "@/app/ui/mainnet-card";
-import OscillatingHatching from "@/app/ui/oscil";
 import VerticalBarsNoise from "@/app/ui/noise-bg";
-// import { useTheme } from "next-themes";
+import { useStoreCore } from "@/lib/storeCoreVault";
+import { useEffect, useState } from "react";
+import { GovernanceProposal } from "@/declarations/core_vault_backend/core_vault_backend.did";
 
 export default function Home() {
   // const { theme } = useTheme();
@@ -22,6 +23,29 @@ export default function Home() {
   //     }
   //     return num.toString();
   //   }
+
+  const { actorCore } = useStoreCore();
+
+  const [data2, setData2] = useState<GovernanceProposal[]>();
+  const [loading, setLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      const dat = await actorCore?.list_proposals();
+      if (dat !== undefined) {
+        setData2(
+          dat.filter((el, id) => {
+            console.log("object", Object.keys(el.status)[id]);
+            return Object.keys(el.status)[0] == "Executed";
+          })
+        );
+      }
+      setLoading(false);
+    };
+
+    fetch();
+  }, [actorCore]);
 
   return (
     <div className="md:p-12 flex flex-col gap-6">
@@ -40,7 +64,6 @@ export default function Home() {
             <div className="flex flex-col gap-2 justify-between">
               <p className="text-lg text-foreground/90">Total Amount Locked</p>
               <div className="text-5xl">
-                {" "}
                 <Skeleton className="h-8 w-32" />
                 {/* {isLoadingPool || isLoadingHst ? (
                   <Skeleton className="h-8 w-32" />
@@ -54,16 +77,14 @@ export default function Home() {
             </div>{" "}
           </div>
         </div>
-        {/* {theme === "dark" ? <VerticalBarsNoise /> : <OscillatingHatching />} */}
         <VerticalBarsNoise />
       </div>
 
-      <div className="bg-background rounded-md w-full lg:flex-row flex-col flex gap-6 lg:gap-12 md:p-6 justify-between">
-        <div className="w-1/2 md:block hidden">
+      <div className="bg-background rounded-md w-full gap-6 md:p-6 grid grid-cols-2">
+        {/* <div className="w-1/2 md:block hidden">
           <OscillatingHatching />
-        </div>
-        <MainnetCard />
-        {/* <TestnetCard /> */}
+        </div> */}
+        {loading ? "loading...." : <MainnetCard data={data2 ?? []} />}
       </div>
     </div>
   );
