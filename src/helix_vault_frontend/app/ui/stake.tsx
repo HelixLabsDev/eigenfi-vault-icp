@@ -15,7 +15,7 @@ import {
   tokensToUnits,
 } from "@/lib/utils";
 import InternetIdentity from "./dfinity";
-import { vaultPrincipal } from "@/lib/constant";
+import { vaultActorAddress } from "@/lib/constant";
 import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
 import { getHstICPContract } from "@/lib/eth-contract";
 import { parse18 } from "@/lib/helpers";
@@ -108,7 +108,7 @@ export default function StakeDemo() {
         const allowanceResult = await ledgerActor.icrc2_allowance({
           account: { owner: userPrincipal, subaccount: [] },
           spender: {
-            owner: Principal.fromText(vaultPrincipal),
+            owner: Principal.fromText(vaultActorAddress),
             subaccount: [],
           },
         });
@@ -130,7 +130,7 @@ export default function StakeDemo() {
             expected_allowance: [],
             expires_at: [],
             spender: {
-              owner: Principal.fromText(vaultPrincipal),
+              owner: Principal.fromText(vaultActorAddress),
               subaccount: [],
             },
           });
@@ -201,7 +201,7 @@ export default function StakeDemo() {
           console.log("tx", tx);
           const expected_eth_from = address ?? "";
           const expected_contract =
-            "0x892E1bF1201ef240b08436C9Bf4af8dBCA65e7eE";
+            "0x25601b4776537E5aF36F650797C86eF4138FA4bC";
 
           // Validation
           if (!/^\d*\.?\d*$/.test(amount)) {

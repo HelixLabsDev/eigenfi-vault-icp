@@ -108,11 +108,18 @@ export default function SlugDialog({ data }: { data: ProposalData }) {
 
       const result = await actorCore.execute_proposal(data.id);
 
+      console.log("result", result);
+
       if ("Err" in result) {
         toast.error("Execution failed", { description: result.Err });
       } else {
+        const principal = result.Ok; // This is already of type Principal
+        const readable = principal.toText(); // ✅ human-readable string
+
+        console.log("readable", readable);
+
         toast.success("Execution successful", {
-          description: `Proposal ID: ${data.id.toString()}`,
+          description: `Principal: ${readable}`,
         });
         setOpen(false);
       }
