@@ -10,19 +10,12 @@ use candid::{CandidType, Deserialize};
 use candid::Principal;
 use ic_cdk::api::time; 
 use std::collections::HashSet;
+use types::ProposalInput;
 
 /// Called once at canister initialization
 #[init]
 fn init() {
     init_state();
-}
-
-#[derive(CandidType, Deserialize)]
-pub struct ProposalInput {
-    pub title: String,
-    pub description: String,
-    pub action: ProposalAction,
-    pub duration_secs: u64,
 }
 
 #[update]
@@ -31,14 +24,14 @@ fn submit_proposal(input: ProposalInput) -> u64 {
     if caller == Principal::anonymous() {
         ic_cdk::trap("Anonymous principals cannot submit proposals.");
     }
-
-    if input.duration_secs < 60 * 60 {
+    // 15 sec
+    if input.duration_secs < 15 {
         ic_cdk::trap("Proposal duration too short. Minimum is 1 hour.");
     }
 
     let proposal = GovernanceProposal {
         id: 0, // will be overwritten by `submit_proposal_impl`
-        proposer: caller.to_text(),
+        proposer: caller,
         title: input.title,
         description: input.description,
         action: input.action,

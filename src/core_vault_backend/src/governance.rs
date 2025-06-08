@@ -40,7 +40,7 @@ pub fn submit_proposal_impl(mut proposal: GovernanceProposal) -> u64 {
 
 // Vote on proposal
 pub fn vote_proposal_impl(proposal_id: u64, approve: bool, voter: Principal) -> Result<(), String> {
-    PROPOSALS.with(|p| {
+    let result = PROPOSALS.with(|p| {
         let mut proposals = p.borrow_mut();
 
         let proposal = proposals.iter_mut().find(|p| p.id == proposal_id)
@@ -52,8 +52,7 @@ pub fn vote_proposal_impl(proposal_id: u64, approve: bool, voter: Principal) -> 
 
         let now = current_timestamp();
         if now > proposal.deadline {
-            proposal.status = ProposalStatus::Rejected;
-            return Err("Proposal voting deadline has passed.".to_string());
+            return Err("Voting deadline has passed — you cannot vote anymore.".to_string());
         }
 
         if proposal.voters.contains(&voter) {
@@ -73,7 +72,10 @@ pub fn vote_proposal_impl(proposal_id: u64, approve: bool, voter: Principal) -> 
         }
 
         Ok(())
-    })
+    });
+    evaluate_proposals();
+
+    result
 }
 
 // Execute if passed
@@ -117,6 +119,7 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
                 Ok(vault_id) => {
                     update_proposal_status(id, ProposalStatus::Approved);
                     record_created_vault(vault_id);
+                    update_proposal_status(id, ProposalStatus::Executed);
                     return Ok(vault_id);
                 }
                 Err(err) => {
@@ -135,7 +138,7 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
                 .map_err(|e| format!("Invalid vault_id: {}", e))?;
 
             let upgrade_args = InstallCodeArgument {
-                mode: CanisterInstallMode::Upgrade,
+                mode: CanisterInstallMode::Upgrade(None),
                 canister_id: target,
                 wasm_module: new_code_hash.clone(),
                 arg: vec![], // No init args
@@ -153,10 +156,6 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
             }
         }
     }
-
-    // fallback
-    Err("Unsupported proposal action.".into())
-
 }
 
 // Query: single proposal
@@ -166,6 +165,7 @@ pub fn get_proposal_impl(id: u64) -> Option<GovernanceProposal> {
 
 // Query: all proposals
 pub fn list_proposals_impl() -> Vec<GovernanceProposal> {
+    evaluate_proposals();
     PROPOSALS.with(|p| p.borrow().clone())
 }
 
@@ -198,4 +198,28 @@ fn update_proposal_status(id: u64, new_status: ProposalStatus) {
 // Internal: record vault ID
 fn record_created_vault(id: Principal) {
     CREATED_VAULTS.with(|v| v.borrow_mut().push(id));
+}
+
+pub fn evaluate_proposals() {
+    let now_secs = api::time() / 1_000_000_000;
+
+    PROPOSALS.with(|p| {
+        let mut proposals = p.borrow_mut();
+
+        for proposal in proposals.iter_mut() {
+            if proposal.status == ProposalStatus::Pending && now_secs > proposal.deadline {
+                let total_votes = proposal.votes_for + proposal.votes_against;
+
+                let total_voters = ALL_VOTERS.with(|v| v.borrow().len());
+                let total_voters_u64 = total_voters as u64;
+
+                let quorum_met = total_voters_u64 > 0 && total_votes * 100 / total_voters_u64 >= 50;
+                if quorum_met && proposal.votes_for > proposal.votes_against {
+                    proposal.status = ProposalStatus::Approved;
+                } else {
+                    proposal.status = ProposalStatus::Rejected;
+                }
+            }
+        }
+    });
 }

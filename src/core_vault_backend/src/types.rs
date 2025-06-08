@@ -6,7 +6,7 @@ use ic_principal::Principal;
 #[derive(CandidType, Serialize, Deserialize, Clone)]
 pub struct GovernanceProposal {
     pub id: u64,
-    pub proposer: String,
+    pub proposer: Principal,
     pub title: String,
     pub description: String,
     pub action: ProposalAction,
