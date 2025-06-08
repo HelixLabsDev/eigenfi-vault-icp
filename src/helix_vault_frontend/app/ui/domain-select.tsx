@@ -35,7 +35,7 @@ export default function DomainSelect() {
           <SelectValue placeholder="Select a domain" />
         </SelectTrigger>
         <SelectContent className="dark:bg-[#01100c]">
-          {domains.map((domain) => (
+          {mainnet.map((domain) => (
             <SelectGroup key={domain.category}>
               <SelectLabel className="text-foreground/70">
                 {domain.category}
@@ -54,6 +54,42 @@ export default function DomainSelect() {
     </div>
   );
 }
+
+const mainnet = [
+  {
+    category: "Mainnet",
+    items: [
+      {
+        id: 6,
+        name: "Movement",
+        link: "https://movement.eigenfi.io",
+        icon: (
+          <Image
+            src={"/movement.svg"}
+            className="w-4 h-4 dark:invert-0 invert"
+            alt="movement"
+            width={20}
+            height={20}
+          />
+        ),
+      },
+      {
+        id: 9,
+        name: "ICP",
+        link: "https://icp.eigenfi.io",
+        icon: (
+          <img
+            src={"/icp-logo.png"}
+            className="w-5 h-auto dark:invert-0 invert"
+            alt="icp"
+            width={20}
+            height={20}
+          />
+        ),
+      },
+    ],
+  },
+];
 
 const domains = [
   {

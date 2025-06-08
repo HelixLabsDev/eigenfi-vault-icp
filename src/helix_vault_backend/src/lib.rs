@@ -95,6 +95,7 @@ async fn deposit_icrc1(amount: Nat, eth_address: String) -> Result<String, Strin
             });
             let test_evm_rpc_canister: Principal = EVM_BACKEND_CANISTER_ID.parse().unwrap();
             let contract = "0x25601b4776537E5aF36F650797C86eF4138FA4bC".to_string();
+
             let scaled_amount = (amount.0.clone() * 10u128.pow(10)).to_string();
             let result: (Result<String, String>,) = call(
                 test_evm_rpc_canister,

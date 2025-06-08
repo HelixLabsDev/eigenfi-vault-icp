@@ -21,6 +21,7 @@ import { getHstICPContract } from "@/lib/eth-contract";
 import { parse18 } from "@/lib/helpers";
 import { useAccount } from "wagmi";
 import Link from "next/link";
+import { StatsSection } from "./stats-action";
 
 export default function StakeDemo() {
   const {
@@ -146,15 +147,24 @@ export default function StakeDemo() {
         toast.loading("Depositing...", { id: toastId });
 
         const res: any = await actor.deposit_icrc1(amountNat, address ?? "");
-        const messageOk = res.Ok;
-        const match = messageOk.match(/0x[a-fA-F0-9]{64}/);
+
+        // Check if it's a success
+        if (!res || typeof res.Ok !== "string") {
+          const errorMessage = res?.Err || "Unknown error during deposit";
+          toast.error(`Deposit failed: ${JSON.stringify(errorMessage)}`, {
+            id: toastId,
+          });
+          return;
+        }
+
+        const match = res.Ok.match(/0x[a-fA-F0-9]{64}/);
 
         if (!match) {
           toast.error("Tx hash not found in response", { id: toastId });
           return;
         }
-
         console.log("Deposit Response:", res);
+        console.log("address: ", address);
 
         if (!res || "Err" in res) {
           toast.error(`Deposit failed: ${JSON.stringify(res.Err || res)}`, {
@@ -188,9 +198,10 @@ export default function StakeDemo() {
 
           const tx = await hstICPWriteContract?.burn(parse18(amount));
           await tx.wait();
+          console.log("tx", tx);
           const expected_eth_from = address ?? "";
           const expected_contract =
-            "0x0FDA998aFd341Ad29B63196994b4f9a02B6cf40B";
+            "0x892E1bF1201ef240b08436C9Bf4af8dBCA65e7eE";
 
           // Validation
           if (!/^\d*\.?\d*$/.test(amount)) {
@@ -313,13 +324,14 @@ export default function StakeDemo() {
         </TabsContent>
       </Tabs>
 
-      <div className="shadow hover:bg-primary/5 dark:bg-foreground/5 bg-white h-[340px] rounded-2xl p-4 duration-200 ease-in-out">
+      <div className="shadow hover:bg-primary/5 dark:bg-foreground/5 bg-white rounded-2xl p-4 duration-200 ease-in-out">
         {/* <Input
           onChange={(e) => setEthAddress(e.target.value)}
           value={ethAddress}
           placeholder="0x..."
           className="w-full py-6"
         /> */}
+        <StatsSection />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -385,7 +397,7 @@ function AmountInput({ amount, onChange, balance }: AmountInputProps) {
         type="text"
         value={amount}
         onChange={(e) => handleChange(e.target.value)}
-        className="hover:bg-primary/5 dark:bg-foreground/5 bg-white  border-0 rounded-2xl focus-visible:ring-offset-0 focus-visible:ring-[0.2px] h-[120px] py-[40px] px-4"
+        className="hover:bg-primary/5 dark:bg-foreground/5 bg-white  border-0 rounded-2xl focus-visible:ring-offset-0 focus-visible:ring-[0.2px] h-[120px] py-[40px] px-4 md:text-[34px]"
       />
       <div className="absolute top-3 right-5">
         <picture className="flex items-center border rounded-full p-1 w-7 h-7 bg-primary/20">
