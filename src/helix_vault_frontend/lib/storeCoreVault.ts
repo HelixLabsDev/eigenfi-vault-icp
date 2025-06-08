@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { AuthClient } from "@dfinity/auth-client";
-import { _SERVICE } from "@/declarations/helix_vault_backend/helix_vault_backend.did";
+import { _SERVICE } from "@/declarations/core_vault_backend/core_vault_backend.did";
 import { _SERVICE as ledgerType } from "@/declarations/icrc1-ledger/icrc1-ledger.did";
 
 interface AppState {
-  actor: _SERVICE | null;
-  setActor: (actor: _SERVICE | null) => void;
+  actorCore: _SERVICE | null;
+  setActorCore: (actor: _SERVICE | null) => void;
 
   ledgerActor: ledgerType | null;
   setLedgerActor: (ledgerActor: ledgerType | null) => void;
@@ -29,8 +29,8 @@ interface AppState {
 }
 
 export const useStoreCore = create<AppState>((set) => ({
-  actor: null,
-  setActor: (actor) => set({ actor }),
+  actorCore: null,
+  setActorCore: (actorCore) => set({ actorCore }),
 
   ledgerActor: null,
   setLedgerActor: (ledgerActor) => set({ ledgerActor }),

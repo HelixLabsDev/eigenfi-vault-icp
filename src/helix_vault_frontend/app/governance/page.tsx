@@ -1,44 +1,39 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { FeedbackDataTable } from "../ui/FeedbackDataTable";
 import FeedbackDialog from "../ui/FeedbackDialog";
+import { useStoreCore } from "@/lib/storeCoreVault";
+import { GovernanceProposal } from "@/declarations/core_vault_backend/core_vault_backend.did";
 
 export default function Governance() {
-  const data = [
-    {
-      id: "proposal-1",
-      title: "Title 1",
-      description: "Description 1",
-      status: "approved",
-      createdAt: "2023-07-01",
-      updatedAt: "2023-07-01",
-      action: "Approved",
-    },
-    {
-      id: "proposal-2",
-      title: "Title 2",
-      description: "Description 2",
-      status: "approved",
-      createdAt: "2023-07-01",
-      updatedAt: "2023-07-01",
-      action: "Approved",
-    },
-    {
-      id: "proposal-3",
-      title: "Title 3",
-      description: "Description 3",
-      status: "pending",
-      createdAt: "2023-07-01",
-      updatedAt: "2023-07-01",
-      action: "Approved",
-    },
-  ];
+  const { actorCore } = useStoreCore();
+
+  const [data2, setData2] = useState<GovernanceProposal[]>();
+  const [loading, setLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+
+      const dat = await actorCore?.list_proposals();
+      if (dat !== undefined) {
+        setData2(dat);
+      }
+
+      setLoading(false);
+    };
+
+    fetch();
+  }, [actorCore]);
+
   return (
     <div className="container mx-auto pt-12">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Governance</h1>
         <FeedbackDialog />
       </div>
-      <FeedbackDataTable data={data} />
+      {loading ? "loading...." : <FeedbackDataTable data={data2 ?? []} />}
     </div>
   );
 }

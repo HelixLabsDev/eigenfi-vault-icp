@@ -13,8 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { ArrowUpDown, ChevronDown } from "lucide-react";
 
 import { Button } from "@/app/ui/button";
 import {
@@ -39,8 +38,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/app/ui/table";
-import { Badge } from "@/app/ui/badge";
+// import { Badge } from "@/app/ui/badge";
 import { DataTableFacetedFilter } from "./FeedbackFaceted";
+import { GovernanceProposal } from "@/declarations/core_vault_backend/core_vault_backend.did";
+import SlugDialog, { getStatusBadge } from "./SlugDialog";
 
 // Define the feedback item type based on the provided data structure
 export interface Feedback {
@@ -53,16 +54,8 @@ export interface Feedback {
   action: string;
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 interface FeedbackDataTableProps {
-  data: Feedback[];
+  data: GovernanceProposal[];
 }
 
 export function FeedbackDataTable({ data }: FeedbackDataTableProps) {
@@ -74,7 +67,7 @@ export function FeedbackDataTable({ data }: FeedbackDataTableProps) {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const columns: ColumnDef<Feedback>[] = [
+  const columns: ColumnDef<GovernanceProposal>[] = [
     {
       accessorKey: "title",
       header: ({ column }) => {
@@ -110,56 +103,26 @@ export function FeedbackDataTable({ data }: FeedbackDataTableProps) {
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
 
-        const getStatusBadge = (status: string) => {
-          switch (status) {
-            case "pending":
-              return (
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                  Pending
-                </Badge>
-              );
-            case "approved":
-              return (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                  Approved
-                </Badge>
-              );
-            case "rejected":
-              return (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                  Rejected
-                </Badge>
-              );
-            default:
-              return (
-                <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-                  {status}
-                </Badge>
-              );
-          }
-        };
+        const statusKey = Object.keys(status)[0];
 
-        return getStatusBadge(status);
+        return <div> {getStatusBadge(statusKey)}</div>;
       },
     },
 
     {
       accessorKey: "createdAt",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="whitespace-nowrap"
-          >
-            Created At
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
+      header: "Deadline",
       cell: ({ row }) => {
+        const deadlineTimestamp =
+          typeof row.original.deadline === "bigint"
+            ? Number(row.original.deadline) * 1000
+            : typeof row.original.deadline === "string"
+            ? Number(row.original.deadline) * 1000
+            : row.original.deadline;
         return (
-          <div className="p-3">{formatDate(row.getValue("createdAt"))}</div>
+          <div className="p-3">
+            {new Date(deadlineTimestamp).toLocaleString()}
+          </div>
         );
       },
     },
@@ -167,15 +130,17 @@ export function FeedbackDataTable({ data }: FeedbackDataTableProps) {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
+        console.log("row", row);
         return (
           <div className="flex gap-2 items-end">
             {/* <EditFeedbackDialog feedbackId={feedback.id} data={data} />
             <DeleteFeedbackDialog feedbackId={feedback.id} /> */}
-            <Link href={`/governance/${row.original.id}`}>
+            {/* <Link href={`/governance/${row.original.id.toString()}`}>
               <Button variant="ghost" className="cursor-pointer">
                 <ChevronRight className="h-4 w-4" />
               </Button>
-            </Link>
+            </Link> */}
+            <SlugDialog data={row.original} />
           </div>
         );
       },

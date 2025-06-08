@@ -7,13 +7,16 @@ import { AuthClient } from "@dfinity/auth-client";
 import { HttpAgent } from "@dfinity/agent";
 import { createActor } from "@/declarations/helix_vault_backend";
 import { createActor as createLedgerActor } from "@/declarations/icrc1-ledger"; // Ledger actor
+import { createActor as createCoreVault } from "@/declarations/core_vault_backend"; // Ledger actor
 import { Button } from "./button";
 import { useStore } from "@/lib/store";
 import {
+  coreVaultPrincipal,
   IDENTITY_URL,
   ledgerActorAddress,
   vaultActorAddress,
 } from "@/lib/constant";
+import { useStoreCore } from "@/lib/storeCoreVault";
 
 const InternetIdentity = () => {
   const {
@@ -26,6 +29,17 @@ const InternetIdentity = () => {
     setPrincipal,
     setLedgerActor,
   } = useStore();
+
+  const {
+    setActorCore,
+    // isAuthenticated,
+    // setIsAuthenticated,
+    // authClient,
+    // setAuthClient,
+    // principal,
+    // setPrincipal,
+    // setLedgerActor,
+  } = useStoreCore();
 
   useEffect(() => {
     updateActor();
@@ -44,6 +58,10 @@ const InternetIdentity = () => {
       }
       const actor = createActor(vaultActorAddress, { agent });
       setActor(actor);
+
+      const actorCore = createCoreVault(coreVaultPrincipal, { agent });
+      setActorCore(actorCore);
+
       setIsAuthenticated(true);
       setPrincipal(identity.getPrincipal().toText().toString());
       console.log("idd: ", principal);
