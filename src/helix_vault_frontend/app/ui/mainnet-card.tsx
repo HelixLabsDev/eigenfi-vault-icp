@@ -1,15 +1,39 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { Skeleton } from "./skeleton";
 import { Badge } from "@/app/ui/badge";
 import { GovernanceProposal } from "@/declarations/core_vault_backend/core_vault_backend.did";
-// import { createActor } from "@/declarations/helix_vault_backend";
+import { createActor } from "@/declarations/helix_vault_backend";
+import { useStore } from "@/lib/store";
+import { convertNatToNumber } from "@/lib/utils";
+import { HttpAgent } from "@dfinity/agent";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 
 export default function MainnetCard({ data }: { data: GovernanceProposal[] }) {
-  // const { totalStaked, isLoadingPool, apr } = usePoolStore();
+  const { setVaultAddress, setActor, authClient, actor } = useStore();
+  const [balance, setBalance] = useState<number>(0);
+
+  const fetchBalances = useCallback(async () => {
+    if (!actor) {
+      console.error("Missing required dependencies for fetching balances");
+      return;
+    }
+
+    try {
+      const vaultBalance = await actor.get_vault_balance();
+      setBalance(convertNatToNumber(vaultBalance.toString()));
+    } catch (error) {
+      console.error("Error fetching balances:", error);
+    }
+  }, [actor]);
+
+  useEffect(() => {
+    if (actor) {
+      fetchBalances();
+    }
+  }, [actor, fetchBalances]);
 
   return data.map((el, id) => {
-    console.log("el", el);
     return (
       <Link
         prefetch
@@ -20,11 +44,19 @@ export default function MainnetCard({ data }: { data: GovernanceProposal[] }) {
         <div
           className="md:p-0 p-6"
           onClick={() => {
-            const principal = el.executed_vault_id; // This is already of type Principal
-            console.log("principal", principal);
-            // const readable = principal.toText(); // ✅ human-readable string
-            // const actor = createActor(el., { agent });
-            // setActor(actor);
+            const principal = el.executed_vault_id[0]; // Principal type
+            const readable = principal?.toText();
+            console.log("principal", readable);
+            setVaultAddress(readable ?? "");
+
+            const identity: any = authClient?.getIdentity();
+            const agent = new HttpAgent({
+              identity,
+              host: "http://localhost:4943",
+            });
+
+            const actor = createActor(readable ?? "", { agent });
+            setActor(actor);
           }}
         >
           <div className="flex items-center justify-between w-full py-2">
@@ -57,13 +89,7 @@ export default function MainnetCard({ data }: { data: GovernanceProposal[] }) {
               </div>
               <div className="flex flex-col justify-between">
                 <p className="text-foreground/70 text-base">Total Deposits</p>{" "}
-                <div className="text-end w-full text-xl">
-                  {/* {isLoadingPool ? ( */}
-                  <Skeleton className="h-4 w-24" />
-                  {/* ) : (
-                  totalStaked
-                )} */}
-                </div>
+                <div className="text-end w-full text-xl">{balance}</div>
               </div>
             </div>
 

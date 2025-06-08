@@ -7,6 +7,9 @@ interface AppState {
   actor: _SERVICE | null;
   setActor: (actor: _SERVICE | null) => void;
 
+  vaultAddress: string;
+  setVaultAddress: (vaultAddress: string) => void;
+
   ledgerActor: ledgerType | null;
   setLedgerActor: (ledgerActor: ledgerType | null) => void;
 
@@ -31,6 +34,9 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   actor: null,
   setActor: (actor) => set({ actor }),
+
+  vaultAddress: "",
+  setVaultAddress: (vaultAddress) => set({ vaultAddress }),
 
   ledgerActor: null,
   setLedgerActor: (ledgerActor) => set({ ledgerActor }),

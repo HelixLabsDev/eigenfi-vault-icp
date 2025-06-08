@@ -41,6 +41,8 @@ const InternetIdentity = () => {
     // setLedgerActor,
   } = useStoreCore();
 
+  const { vaultAddress } = useStore();
+
   useEffect(() => {
     updateActor();
   }, []);
@@ -56,7 +58,10 @@ const InternetIdentity = () => {
       if (process.env.NEXT_PUBLIC_DFX_NETWORK !== "ic") {
         await agent.fetchRootKey(); // Local dev
       }
-      const actor = createActor(vaultActorAddress, { agent });
+      const actor = createActor(
+        vaultAddress.length > 0 ? vaultAddress : vaultActorAddress,
+        { agent }
+      );
       setActor(actor);
 
       const actorCore = createCoreVault(coreVaultPrincipal, { agent });

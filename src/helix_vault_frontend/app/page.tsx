@@ -1,7 +1,6 @@
 "use client";
 
 import GradientText from "@/app/ui/gradient-text";
-import { Skeleton } from "@/app/ui/skeleton";
 import MainnetCard from "@/app/ui/mainnet-card";
 import VerticalBarsNoise from "@/app/ui/noise-bg";
 import { useStoreCore } from "@/lib/storeCoreVault";
@@ -9,8 +8,6 @@ import { useEffect, useState } from "react";
 import { GovernanceProposal } from "@/declarations/core_vault_backend/core_vault_backend.did";
 
 export default function Home() {
-  // const { theme } = useTheme();
-
   //   function formatNumber(num: number): string {
   //     if (num >= 1_000_000_000_000) {
   //       return (num / 1_000_000_000_000).toFixed(1).replace(/\.0$/, "") + "T";
@@ -64,7 +61,7 @@ export default function Home() {
             <div className="flex flex-col gap-2 justify-between">
               <p className="text-lg text-foreground/90">Total Amount Locked</p>
               <div className="text-5xl">
-                <Skeleton className="h-8 w-32" />
+                10000
                 {/* {isLoadingPool || isLoadingHst ? (
                   <Skeleton className="h-8 w-32" />
                 ) : (
@@ -81,9 +78,6 @@ export default function Home() {
       </div>
 
       <div className="bg-background rounded-md w-full gap-6 md:p-6 grid grid-cols-2">
-        {/* <div className="w-1/2 md:block hidden">
-          <OscillatingHatching />
-        </div> */}
         {loading ? "loading...." : <MainnetCard data={data2 ?? []} />}
       </div>
     </div>

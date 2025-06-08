@@ -10,7 +10,6 @@ import { Component2 as Chart2 } from "@/app/ui/chart-2";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/ui/tabs";
 import { Skeleton } from "@/app/ui/skeleton";
 import { useStore } from "@/lib/store";
-import { vaultActorAddress } from "@/lib/constant";
 import { convertBalance, convertNatToNumber } from "@/lib/utils";
 import { Principal } from "@dfinity/principal";
 import { createActor } from "@/declarations/helix_vault_backend";
@@ -30,6 +29,7 @@ export default function Home() {
     setWithdrawBalance,
     ledgerActor,
     isAuthenticated,
+    vaultAddress,
   } = useStore();
 
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,7 @@ export default function Home() {
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const actor = createActor(vaultActorAddress);
+      const actor = createActor(vaultAddress);
       const balance = await actor.get_vault_balance();
       setBalance(convertNatToNumber(balance.toString()));
       setInterval(() => {
@@ -75,7 +75,7 @@ export default function Home() {
     };
 
     fetch();
-  }, [setBalance]);
+  }, [setBalance, vaultAddress]);
 
   useEffect(() => {
     const fetch = async () => {

@@ -15,7 +15,6 @@ import {
   tokensToUnits,
 } from "@/lib/utils";
 import InternetIdentity from "./dfinity";
-import { vaultActorAddress } from "@/lib/constant";
 import { _depositEthereum, _withdrawEthereum } from "@/lib/axios/_actions";
 import { getHstICPContract } from "@/lib/eth-contract";
 import { parse18 } from "@/lib/helpers";
@@ -35,12 +34,11 @@ export default function StakeDemo() {
     withdrawBalance,
     ledgerActor,
     isAuthenticated,
+    vaultAddress,
   } = useStore();
 
   const [isDeposit, setIsDeposit] = useState<boolean>(true);
   const [amount, setAmount] = useState<string>("");
-
-  // const [ethAddress, setEthAddress] = useState<string>("");
 
   const { address } = useAccount();
 
@@ -104,11 +102,10 @@ export default function StakeDemo() {
       const amountNat = convertToNat(amount);
 
       if (type === "deposit") {
-        // Check Allowance
         const allowanceResult = await ledgerActor.icrc2_allowance({
           account: { owner: userPrincipal, subaccount: [] },
           spender: {
-            owner: Principal.fromText(vaultActorAddress),
+            owner: Principal.fromText(vaultAddress),
             subaccount: [],
           },
         });
@@ -130,7 +127,7 @@ export default function StakeDemo() {
             expected_allowance: [],
             expires_at: [],
             spender: {
-              owner: Principal.fromText(vaultActorAddress),
+              owner: Principal.fromText(vaultAddress),
               subaccount: [],
             },
           });
