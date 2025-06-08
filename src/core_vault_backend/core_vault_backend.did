@@ -21,6 +21,7 @@ type GovernanceProposal = record {
   votes_against : nat64;
   deadline : nat64;
   voters: vec principal;
+  executed_vault_id : opt principal;
 };
 
 service : {

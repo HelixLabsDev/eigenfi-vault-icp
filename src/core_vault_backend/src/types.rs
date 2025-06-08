@@ -14,7 +14,8 @@ pub struct GovernanceProposal {
     pub votes_for: u64,
     pub votes_against: u64,
     pub deadline: u64,
-    pub voters: HashSet<Principal>, 
+    pub voters: HashSet<Principal>,
+    pub executed_vault_id: Option<Principal>,
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone)]

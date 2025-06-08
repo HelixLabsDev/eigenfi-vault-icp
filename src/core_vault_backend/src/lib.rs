@@ -40,6 +40,7 @@ fn submit_proposal(input: ProposalInput) -> u64 {
         votes_against: 0,
         deadline: current_timestamp() + input.duration_secs,
         voters: HashSet::new(),
+        executed_vault_id: None,
     };
 
     submit_proposal_impl(proposal)

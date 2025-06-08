@@ -61,6 +61,7 @@ export default function SlugDialog({ data }: { data: ProposalData }) {
   const [open, setOpen] = useState(false);
   const { actorCore } = useStoreCore();
   const [action, setAction] = useState<boolean | undefined>();
+  console.log(data);
 
   const [val, setVal] = useState<string>(
     data.votes_for == 1 ? "vote" : data.votes_against == 1 ? "against" : ""

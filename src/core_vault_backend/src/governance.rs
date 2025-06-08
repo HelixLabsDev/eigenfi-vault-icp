@@ -119,6 +119,7 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
                 Ok(vault_id) => {
                     update_proposal_status(id, ProposalStatus::Approved);
                     record_created_vault(vault_id);
+                    set_executed_vault_id(id, Some(vault_id));
                     update_proposal_status(id, ProposalStatus::Executed);
                     return Ok(vault_id);
                 }
@@ -156,6 +157,15 @@ pub async fn execute_proposal_impl(id: u64) -> Result<Principal, String> {
             }
         }
     }
+}
+
+fn set_executed_vault_id(id: u64, vault_id: Option<Principal>) {
+    PROPOSALS.with(|p| {
+        let mut proposals = p.borrow_mut();
+        if let Some(found) = proposals.iter_mut().find(|p| p.id == id) {
+            found.executed_vault_id = vault_id;
+        }
+    });
 }
 
 // Query: single proposal
