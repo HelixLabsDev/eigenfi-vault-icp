@@ -3,7 +3,7 @@ import { getContractEssentials } from "./helpers";
 import hstICPAbi from "../abi/HelixStakedICP.json";
 
 // Define the contract address
-const hstICPContract: string = "0x25601b4776537E5aF36F650797C86eF4138FA4bC";
+const hstICPContract: string = "0xF47763Ae4b3C4A04345C65229e99344be107301b";
 
 // Define the return type interface
 interface HstICPContracts {
