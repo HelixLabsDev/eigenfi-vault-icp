@@ -19,8 +19,8 @@ struct UserBalance {
 thread_local! {
     static USER_BALANCES: RefCell<HashMap<Principal, UserBalance>> = RefCell::new(HashMap::new());
     static TOTAL_DEPOSITED: RefCell<Nat> = RefCell::new(Nat::from(0u64));
-    static TRANSFER_FEE: RefCell<Nat> = RefCell::new(Nat::from(10_000_u64)); // Default fee, updated lazily
-    static USED_TX_HASHES: RefCell<HashSet<String>> = RefCell::new(HashSet::new()); // to prevent replay attacks
+    static TRANSFER_FEE: RefCell<Nat> = RefCell::new(Nat::from(10_000_u64));
+    static USED_TX_HASHES: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
 }
 
 #[ic_cdk::query]
@@ -189,22 +189,22 @@ async fn unlock_icrc1(
                 Ok((Ok(_block_index),)) => {
                     USED_TX_HASHES.with(|set| set.borrow_mut().insert(tx_hash));
                     // Update user balance
-USER_BALANCES.with(|balances| {
-    let mut user_balances = balances.borrow_mut();
-    if let Some(user_balance) = user_balances.get_mut(&caller) {
-        if user_balance.balance >= withdraw_amount_8dec {
-            user_balance.balance -= withdraw_amount_8dec.clone();
-        }
-    }
-});
+                    USER_BALANCES.with(|balances| {
+                        let mut user_balances = balances.borrow_mut();
+                        if let Some(user_balance) = user_balances.get_mut(&caller) {
+                            if user_balance.balance >= withdraw_amount_8dec {
+                                user_balance.balance -= withdraw_amount_8dec.clone();
+                            }
+                        }
+                    });
 
-// Update vault balance
-TOTAL_DEPOSITED.with(|total| {
-    let mut total_deposited = total.borrow_mut();
-    if *total_deposited >= withdraw_amount_8dec {
-        *total_deposited -= withdraw_amount_8dec.clone();
-    }
-});
+                    // Update vault balance
+                    TOTAL_DEPOSITED.with(|total| {
+                        let mut total_deposited = total.borrow_mut();
+                        if *total_deposited >= withdraw_amount_8dec {
+                            *total_deposited -= withdraw_amount_8dec.clone();
+                        }
+                    });
 
                     Ok(format!(
                         "Unlocked {} nICP to caller. Verified burn on Ethereum.",
