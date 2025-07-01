@@ -30,7 +30,6 @@ pub struct SharedProposal {
     pub status: SharedProposalStatus,
 }
 
-// This matches `type result = variant { ok : null; err : text };` in your .did
 #[derive(CandidType, Deserialize)]
 pub enum Result_ {
     #[serde(rename = "ok")]
@@ -46,6 +45,20 @@ impl From<std::result::Result<(), String>> for Result_ {
             Err(e) => Result_::Err(e),
         }
     }
+}
+
+#[derive(CandidType, Deserialize)]
+struct ProposalInput {
+    title: String,
+    description: String,
+    action: ProposalAction,
+    duration_secs: u64,
+}
+
+#[derive(CandidType, Deserialize)]
+enum ProposalAction {
+    CreateVault { token_symbol: String },
+    UpgradeVault { vault_id: String, new_code_hash: Vec<u8> },
 }
 
 thread_local! {
@@ -182,21 +195,34 @@ async fn execute_proposal(id: u64) -> Result_ {
 
         SharedProposalAction::CreateVault { token_type } => {
             let core_vault_canister_id = match Principal::from_text("bw4dl-smaaa-aaaaa-qaacq-cai") {
-                Ok(id) => id,
+                Ok(principal) => principal,
                 Err(e) => return Result_::Err(format!("Invalid canister ID: {}", e)),
             };
 
-            let result: (std::result::Result<Principal, String>,) = match ic_cdk::call(
-                core_vault_canister_id,
-                "create_helix_vault",
-                (token_type,),
-            ).await {
-                Ok(r) => r,
-                Err(e) => return Result_::Err(format!("Cross-canister call failed: {:?}", e)),
-            };
+            let proposal_input = (
+                ProposalInput {
+                    title: format!("Create Vault for {}", token_type),
+                    description: format!("Shared Ownership Proposal: Deploy vault for {}", token_type),
+                    action: ProposalAction::CreateVault {
+                        token_symbol: token_type.clone()
+                    },
+                    duration_secs: 3600u64,
+                },
+            );
 
-            if let Err(e) = result.0 {
-                return Result_::Err(format!("CreateVault failed: {}", e));
+            let call_result: std::result::Result<(u64,), _> = ic_cdk::call(
+                core_vault_canister_id,
+                "submit_proposal",
+                proposal_input,
+            ).await;
+
+            match call_result {
+                Ok((proposal_id,)) => {
+                    ic_cdk::println!("Governance proposal submitted with ID: {}", proposal_id);
+                }
+                Err(e) => {
+                    return Result_::Err(format!("Cross-canister call failed: {:?}", e));
+                }
             }
         }
     }
