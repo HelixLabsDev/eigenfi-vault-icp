@@ -12,6 +12,23 @@ use ic_cdk::api::time;
 use std::collections::HashSet;
 use types::ProposalInput;
 
+#[derive(CandidType, Deserialize)]
+enum Result_ {
+    #[serde(rename = "ok")]
+    Ok,
+    #[serde(rename = "err")]
+    Err(String),
+}
+
+impl From<std::result::Result<(), String>> for Result_ {
+    fn from(res: std::result::Result<(), String>) -> Self {
+        match res {
+            Ok(_) => Result_::Ok,
+            Err(e) => Result_::Err(e),
+        }
+    }
+}
+
 /// Called once at canister initialization
 #[init]
 fn init() {
@@ -86,4 +103,36 @@ fn get_proposal(id: u64) -> Option<GovernanceProposal> {
 #[query]
 fn list_proposals() -> Vec<GovernanceProposal> {
     list_proposals_impl()
+}
+
+#[update]
+fn add_controller_to_vault(vault_id: Principal, new_controller: Principal) -> Result_ {
+    use ic_cdk::api::management_canister::main::{
+        update_settings, UpdateSettingsArgument, CanisterSettings,
+    };
+
+    ic_cdk::spawn(async move {
+        let settings = CanisterSettings {
+            controllers: Some(vec![new_controller]),
+            compute_allocation: None,
+            memory_allocation: None,
+            freezing_threshold: None,
+            log_visibility: None,
+            reserved_cycles_limit: None,
+            wasm_memory_limit: None,
+        };
+
+        let args = UpdateSettingsArgument {
+            canister_id: vault_id,
+            settings,
+        };
+
+        match update_settings(args).await {
+            Ok(()) => ic_cdk::println!("✅ Controller added to vault"),
+            Err(e) => ic_cdk::println!("❌ Failed to add controller: {:?}", e),
+        }
+    });
+
+    // Always return Ok immediately, since we cannot await inside this fn
+    Result_::Ok
 }

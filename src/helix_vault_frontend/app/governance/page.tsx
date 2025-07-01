@@ -17,6 +17,7 @@ export default function Governance() {
       setLoading(true);
 
       const dat = await actorCore?.list_proposals();
+      console.log("dat", dat);
       if (dat !== undefined) {
         setData2(dat);
       }

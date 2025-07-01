@@ -157,12 +157,12 @@ async fn execute_proposal(id: u64) -> Result_ {
             let proposal = proposals.iter_mut().find(|p| p.id == id)
                 .ok_or("Proposal not found")?;
 
-            if proposal.status != SharedProposalStatus::Approved {
-                return Err("Proposal is not approved yet.".to_string());
-            }
-
             if proposal.status == SharedProposalStatus::Executed {
                 return Err("Proposal already executed.".to_string());
+            }
+
+            if proposal.status != SharedProposalStatus::Approved {
+                return Err("Proposal is not approved yet.".to_string());
             }
 
             proposal.status = SharedProposalStatus::Executed;
@@ -194,7 +194,7 @@ async fn execute_proposal(id: u64) -> Result_ {
         }
 
         SharedProposalAction::CreateVault { token_type, duration_secs } => {
-            let core_vault_canister_id = match Principal::from_text("bw4dl-smaaa-aaaaa-qaacq-cai") {
+            let core_vault_canister_id = match Principal::from_text("g6z42-4eaaa-aaaaa-qaata-cai") {
                 Ok(principal) => principal,
                 Err(e) => return Result_::Err(format!("Invalid canister ID: {}", e)),
             };
