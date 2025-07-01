@@ -7,7 +7,7 @@ use hex;
 #[derive(CandidType, Deserialize, Clone)]
 pub enum SharedProposalAction {
     UpgradeVault { vault_id: Principal, wasm_hash: String },
-    CreateVault { token_type: String },
+    CreateVault { token_type: String, duration_secs: u64 },
 }
 
 #[derive(CandidType, Deserialize, Clone, PartialEq)]
@@ -193,7 +193,7 @@ async fn execute_proposal(id: u64) -> Result_ {
             }
         }
 
-        SharedProposalAction::CreateVault { token_type } => {
+        SharedProposalAction::CreateVault { token_type, duration_secs } => {
             let core_vault_canister_id = match Principal::from_text("bw4dl-smaaa-aaaaa-qaacq-cai") {
                 Ok(principal) => principal,
                 Err(e) => return Result_::Err(format!("Invalid canister ID: {}", e)),
@@ -206,7 +206,7 @@ async fn execute_proposal(id: u64) -> Result_ {
                     action: ProposalAction::CreateVault {
                         token_symbol: token_type.clone()
                     },
-                    duration_secs: 3600u64,
+                    duration_secs,
                 },
             );
 
