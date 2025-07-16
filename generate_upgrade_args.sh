@@ -12,11 +12,11 @@ fi
 # Write the Candid argument file
 cat > upgrade_args.did <<EOF
 (
-  "Upgrade Vault for HST",
-  "Upgrading the HST vault with new code",
+  "Upgrade Vault for Test",
+  "Upgrading the for Test vault with new code",
   variant {
     UpgradeVault = record {
-      vault_id = principal "htxyu-tmaaa-aaaaa-qaauq-cai";
+      vault_id = principal "hgqjz-seaaa-aaaaa-qaaxa-cai";
       wasm_hash = "$wasm"
     }
   }

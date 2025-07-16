@@ -43,7 +43,7 @@ fn get_transfer_fee() -> Nat {
 #[ic_cdk::update]
 async fn deposit_icrc1(amount: Nat, eth_address: String) -> Result<String, String> {
     if amount == Nat::from(0u64) {
-        return Err("Depo amount must be greater than zero".to_string());
+        return Err("Deposit amount must be greater than zero".to_string());
     }
 
     let caller = ic_cdk::api::caller();
